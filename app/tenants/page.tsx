@@ -298,7 +298,7 @@ async function signOut() {
                 >
                 Relancer
                 </button>
-                
+
               </div>
             </div>
           ))}

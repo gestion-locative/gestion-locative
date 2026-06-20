@@ -1,24 +1,13 @@
 import { Resend } from "resend";
 
 export async function POST(req: Request) {
+    console.log("🔥 API SEND EMAIL CALLED");
   try {
-    console.log("API CALLED");
+    const resend = new Resend(process.env.RESEND_API_KEY!);
 
     const body = await req.json();
-    console.log("BODY:", body);
-
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    if (!process.env.RESEND_API_KEY) {
-      console.log("NO API KEY");
-      return Response.json({ error: "Missing API key" });
-    }
-
     const { email, name, rent } = body;
-
-    if (!email) {
-      return Response.json({ error: "Missing email" });
-    }
+    console.log("BODY RECEIVED:", body);
 
     const data = await resend.emails.send({
       from: "Gestion Locative <onboarding@resend.dev>",
@@ -26,13 +15,12 @@ export async function POST(req: Request) {
       subject: "Relance de loyer",
       html: `
         <h2>Bonjour ${name}</h2>
-        <p>Loyer : ${rent}€</p>
+        <p>Nous vous rappelons que votre loyer de <b>${rent}€</b> est en attente.</p>
       `,
     });
 
     return Response.json(data);
   } catch (error) {
-    console.log("ERROR API:", error);
     return Response.json({ error });
   }
 }
