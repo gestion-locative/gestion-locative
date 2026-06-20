@@ -10,17 +10,15 @@ export async function POST(req: Request) {
     console.log("BODY RECEIVED:", body);
 
     const data = await resend.emails.send({
-      from: "Gestion Locative <onboarding@resend.dev>",
-      to: email,
-      subject: "Relance de loyer",
-      html: `
-        <h2>Bonjour ${name}</h2>
-        <p>Nous vous rappelons que votre loyer de <b>${rent}€</b> est en attente.</p>
-      `,
+    from: "onboarding@resend.dev",
+    to: email,
+    subject: "Relance de loyer",
+    html: `<p>Test ${name} - ${rent}</p>`,
     });
 
     return Response.json(data);
   } catch (error) {
-    return Response.json({ error });
-  }
+  console.log("RESEND ERROR FULL:", error);
+  return Response.json({ error });
+}
 }

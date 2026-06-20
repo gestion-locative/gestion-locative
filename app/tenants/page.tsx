@@ -280,21 +280,29 @@ async function signOut() {
 
                 <button
                 onClick={async () => {
-                    await fetch("/api/send-email", {
-                    method: "POST",
-                    headers: {
+                    console.log("BUTTON CLICKED");
+
+                    try {
+                    const res = await fetch("/api/send-email", {
+                        method: "POST",
+                        headers: {
                         "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
+                        },
+                        body: JSON.stringify({
                         email: t.email,
                         name: t.name,
                         rent: t.rent,
-                    }),
+                        }),
                     });
 
+                    const data = await res.json();
+                    console.log("API RESPONSE:", data);
+
                     alert("Relance envoyée !");
+                    } catch (err) {
+                    console.log("FETCH ERROR:", err);
+                    }
                 }}
-                className="bg-red-600 text-white px-3 py-1 rounded"
                 >
                 Relancer
                 </button>
