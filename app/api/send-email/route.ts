@@ -3,8 +3,9 @@ import { Resend } from "resend";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
+    
     console.log("🔥 BODY:", body);
+    console.log("BODY:", await req.json());
 
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
