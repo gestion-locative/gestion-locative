@@ -181,6 +181,8 @@ async function signOut() {
         Se déconnecter
     </button>
 
+    
+
     </div>
 
         
@@ -239,6 +241,9 @@ async function signOut() {
             >
               {editingIndex !== null ? "Modifier" : "Ajouter"}
             </button>
+
+            
+
           </div>
         )}
 
@@ -272,6 +277,28 @@ async function signOut() {
                 >
                   🗑
                 </button>
+
+                <button
+                onClick={async () => {
+                    await fetch("/api/send-email", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: t.email,
+                        name: t.name,
+                        rent: t.rent,
+                    }),
+                    });
+
+                    alert("Relance envoyée !");
+                }}
+                className="bg-red-600 text-white px-3 py-1 rounded"
+                >
+                Relancer
+                </button>
+                
               </div>
             </div>
           ))}
