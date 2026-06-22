@@ -16,13 +16,9 @@ function applyTemplate(template: string, vars: Record<string, string>) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const { email, name, pdfUrl, month, ownerId } = await req.json();
 
-    const email = body.email?.trim();
-    const name = body.name;
-    const rent = body.rent;
-    const ownerId = body.ownerId;
+    const resend = new Resend(process.env.RESEND_API_KEY!);
 
     const { data: owner } = await supabaseAdmin
       .from("owner_profiles")
@@ -30,32 +26,37 @@ export async function POST(req: Request) {
       .eq("user_id", ownerId)
       .maybeSingle();
 
-    const subjectTemplate = owner?.reminder_subject || "Rappel de paiement de loyer";
-    const bodyTemplate = owner?.reminder_body || `Bonjour {nom_locataire},\n\nNous vous informons que le paiement de votre loyer de {loyer}€ est actuellement en attente. Nous vous remercions de bien vouloir procéder au règlement dans les meilleurs délais.\n\nPour toute question, n'hésitez pas à nous contacter.\n\nCordialement,\n{nom_proprietaire}`;
+    const subjectTemplate = owner?.receipt_subject || "Quittance de loyer — {mois}";
+    const bodyTemplate = owner?.receipt_body || `Bonjour {nom_locataire},\n\nNous vous remercions pour le règlement de votre loyer. Vous trouverez ci-joint votre quittance de loyer pour la période concernée.\n\nNous restons à votre disposition pour toute question.\n\nCordialement,\n{nom_proprietaire}`;
 
-    const vars = { nom_locataire: name, loyer: String(rent), mois: "", nom_proprietaire: owner?.full_name || "" };
+    const vars = { nom_locataire: name, loyer: "", mois: month, nom_proprietaire: owner?.full_name || "" };
     const subject = applyTemplate(subjectTemplate, vars);
     const message = applyTemplate(bodyTemplate, vars);
 
-    console.log("📩 EMAIL CLEAN:", email);
+    const pdfResponse = await fetch(pdfUrl);
+    const pdfBuffer = await pdfResponse.arrayBuffer();
+    const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
 
     const { data, error } = await resend.emails.send({
       from: "onboarding@resend.dev",
       to: email,
       subject,
       html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${message.replace(/\n/g, "<br>")}</div>`,
+      attachments: [
+        {
+          filename: "quittance.pdf",
+          content: pdfBase64,
+        },
+      ],
     });
 
     if (error) {
-      console.log("❌ RESEND ERROR:", error.name, error.message);
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    console.log("✅ RESEND SUCCESS:", data);
     return Response.json(data);
-
   } catch (error: any) {
-    console.log("❌ CATCH ERROR:", error?.message || error);
+    console.error("Erreur envoi quittance:", error);
     return Response.json({ error: error?.message || "Erreur inconnue" }, { status: 500 });
   }
 }
