@@ -176,14 +176,12 @@ export default function PropertiesPage() {
     <main className="min-h-screen bg-gray-50 p-10">
       <div className="max-w-3xl mx-auto">
 
-        <div className="mb-6 flex items-center justify-between">
-          <Link
-            href="/tenants"
-            className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 transition"
-          >
-            ← Locataires
-          </Link>
-        </div>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 transition mb-6"
+        >
+          ← Accueil
+        </Link>
 
         <h1 className="text-3xl font-bold mb-6">🏠 Mes biens</h1>
 
