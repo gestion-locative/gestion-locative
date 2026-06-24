@@ -6,12 +6,6 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
-/* ------------------------------------------------------------------
-   Fiche détail d'un bien Loya — thème solaire, styles 100% en ligne.
-   Toute la logique (locataires rattachés, paiements, rattacher/retirer,
-   statut vacant) est strictement identique à l'original.
-------------------------------------------------------------------- */
-
 const INK = "#1a1208";
 const CREAM = "#fbf1e3";
 const BROWN = "#b45309";
@@ -46,9 +40,7 @@ export default function PropertyPage() {
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [loadingLink, setLoadingLink] = useState(false);
 
-  useEffect(() => {
-    fetchAll();
-  }, [params.id]);
+  useEffect(() => { fetchAll(); }, [params.id]);
 
   async function fetchAll() {
     await fetchProperty();
@@ -57,55 +49,29 @@ export default function PropertyPage() {
   }
 
   async function fetchProperty() {
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("id", params.id)
-      .single();
-
+    const { data, error } = await supabase.from("properties").select("*").eq("id", params.id).single();
     if (!error) setProperty(data);
     else console.log("Erreur fetch property:", error);
   }
 
   async function fetchTenants() {
-    const { data, error } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("property_id", params.id);
-
-    if (!error) {
-      setTenants(data || []);
-      await fetchPayments(data || []);
-    }
+    const { data, error } = await supabase.from("tenants").select("*").eq("property_id", params.id);
+    if (!error) { setTenants(data || []); await fetchPayments(data || []); }
   }
 
   async function fetchAllTenants() {
     const { data: userData } = await supabase.auth.getUser();
-    const { data, error } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("user_id", userData.user?.id)
-      .is("property_id", null);
-
+    const { data, error } = await supabase.from("tenants").select("*")
+      .eq("user_id", userData.user?.id).is("property_id", null);
     if (!error) setAllTenants(data || []);
   }
 
   async function fetchPayments(tenantList: any[]) {
-    if (tenantList.length === 0) {
-      setPayments({});
-      return;
-    }
-
+    if (tenantList.length === 0) { setPayments({}); return; }
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     const ids = tenantList.map((t) => t.id);
-
-    const { data, error } = await supabase
-      .from("payments")
-      .select("*")
-      .in("tenant_id", ids)
-      .eq("month", monthKey);
-
+    const { data, error } = await supabase.from("payments").select("*").in("tenant_id", ids).eq("month", monthKey);
     if (!error) {
       const map: Record<string, any> = {};
       (data || []).forEach((p) => { map[p.tenant_id] = p; });
@@ -116,48 +82,24 @@ export default function PropertyPage() {
   async function linkTenant() {
     if (!selectedTenantId) return;
     setLoadingLink(true);
-
-    const { error } = await supabase
-      .from("tenants")
-      .update({ property_id: params.id })
-      .eq("id", selectedTenantId);
-
+    const { error } = await supabase.from("tenants").update({ property_id: params.id }).eq("id", selectedTenantId);
     setLoadingLink(false);
-
-    if (!error) {
-      toast.success("Locataire rattaché au bien !");
-      setSelectedTenantId("");
-      await fetchAll();
-    } else {
-      toast.error("Impossible de rattacher le locataire.");
-    }
+    if (!error) { toast.success("Locataire rattaché au bien !"); setSelectedTenantId(""); await fetchAll(); }
+    else toast.error("Impossible de rattacher le locataire.");
   }
 
   async function unlinkTenant(tenantId: string) {
-    const { error } = await supabase
-      .from("tenants")
-      .update({ property_id: null })
-      .eq("id", tenantId);
-
-    if (!error) {
-      toast.success("Locataire retiré du bien.");
-      await fetchAll();
-    } else {
-      toast.error("Impossible de retirer le locataire.");
-    }
+    const { error } = await supabase.from("tenants").update({ property_id: null }).eq("id", tenantId);
+    if (!error) { toast.success("Locataire retiré du bien."); await fetchAll(); }
+    else toast.error("Impossible de retirer le locataire.");
   }
 
   async function updateVacancyStatus(tenantCount: number) {
-    await supabase
-      .from("properties")
-      .update({ is_vacant: tenantCount === 0 })
-      .eq("id", params.id);
+    await supabase.from("properties").update({ is_vacant: tenantCount === 0 }).eq("id", params.id);
   }
 
   useEffect(() => {
-    if (property) {
-      updateVacancyStatus(tenants.length);
-    }
+    if (property) updateVacancyStatus(tenants.length);
   }, [tenants]);
 
   if (!property) {
@@ -172,21 +114,14 @@ export default function PropertyPage() {
   const paidCount = tenants.filter((t) => payments[t.id]?.is_paid).length;
 
   return (
-    <main style={{ minHeight: "100vh", background: CREAM, padding: 24, fontFamily: body, position: "relative", overflow: "hidden" }}>
+    <main style={{ minHeight: "100vh", background: CREAM, padding: "16px", fontFamily: body, position: "relative", overflow: "hidden" }}>
       {/* SOLEIL décoratif */}
-      <div
-        style={{
-          pointerEvents: "none",
-          position: "absolute",
-          right: -120,
-          top: -140,
-          width: 340,
-          height: 340,
-          borderRadius: "50%",
-          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
-          opacity: 0.8,
-        }}
-      />
+      <div style={{
+        pointerEvents: "none", position: "absolute", right: -120, top: -140,
+        width: 340, height: 340, borderRadius: "50%",
+        background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+        opacity: 0.8,
+      }} />
 
       <div style={{ position: "relative", maxWidth: 640, margin: "0 auto" }}>
 
@@ -203,12 +138,12 @@ export default function PropertyPage() {
           ← Retour
         </button>
 
-        <div style={{ background: "#fff", borderRadius: 24, border: `1px solid ${BORDER}`, boxShadow: "0 24px 60px -34px rgba(120,53,15,0.4)", padding: 32 }}>
+        <div style={{ background: "#fff", borderRadius: 24, border: `1px solid ${BORDER}`, boxShadow: "0 24px 60px -34px rgba(120,53,15,0.4)", padding: "24px 20px" }}>
 
           {/* INFOS DU BIEN */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 24 }}>
-            <div>
-              <h1 style={{ fontFamily: display, fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", color: INK }}>{property.address}</h1>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontFamily: display, fontSize: "clamp(20px, 5vw, 26px)", fontWeight: 800, letterSpacing: "-0.02em", color: INK }}>{property.address}</h1>
               <p style={{ fontSize: 14, color: "#7a684f", marginTop: 4 }}>{property.postal_code} {property.city}</p>
               <p style={{ fontSize: 14, color: MUTE, marginTop: 4 }}>
                 {property.type}{property.surface ? ` · ${property.surface} m²` : ""}
@@ -217,21 +152,22 @@ export default function PropertyPage() {
                 <p style={{ fontSize: 14, color: MUTE, marginTop: 4, fontStyle: "italic" }}>{property.description}</p>
               )}
             </div>
-
-            <span
-              style={{
-                flexShrink: 0,
-                padding: "5px 12px", borderRadius: 999, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
-                background: tenants.length === 0 ? RED_BG : GREEN_BG,
-                color: tenants.length === 0 ? RED : GREEN,
-              }}
-            >
+            <span style={{
+              flexShrink: 0,
+              padding: "5px 12px", borderRadius: 999, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+              background: tenants.length === 0 ? RED_BG : GREEN_BG,
+              color: tenants.length === 0 ? RED : GREEN,
+            }}>
               {tenants.length === 0 ? "🔴 Vacant" : `🟢 ${tenants.length} locataire${tenants.length > 1 ? "s" : ""}`}
             </span>
           </div>
 
-          {/* STATS DU BIEN */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
+          {/* STATS — auto-fill : 1 col sur très petit, 3 sur grand */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+            gap: 12, marginBottom: 24,
+          }}>
             <div style={{ background: FIELD_BG, borderRadius: 14, padding: 14, textAlign: "center", border: `1px solid ${FIELD_BORDER}` }}>
               <p style={{ fontSize: 12, color: MUTE, fontWeight: 600, marginBottom: 4 }}>Loyer total</p>
               <p style={{ fontFamily: display, fontSize: 20, fontWeight: 800, color: INK, margin: 0 }}>{totalRent} €</p>
@@ -246,7 +182,7 @@ export default function PropertyPage() {
             </div>
           </div>
 
-          {/* LOCATAIRES DU BIEN */}
+          {/* LOCATAIRES */}
           <h2 style={sectionTitle}>👥 Locataires</h2>
 
           {tenants.length === 0 ? (
@@ -256,39 +192,31 @@ export default function PropertyPage() {
               {tenants.map((t) => {
                 const isPaid = !!payments[t.id]?.is_paid;
                 return (
-                  <div
-                    key={t.id}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "10px 14px" }}
-                  >
-                    <div>
-                      <p style={{ fontWeight: 700, color: INK }}>{t.name}</p>
-                      <p style={{ fontSize: 12, color: MUTE, marginTop: 2 }}>{t.email}</p>
+                  <div key={t.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px" }}>
+                    {/* Ligne 1 : nom + loyer */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <p style={{ fontWeight: 700, color: INK, margin: 0 }}>{t.name}</p>
+                      <span style={{ fontFamily: display, fontWeight: 800, color: INK, marginLeft: 8, whiteSpace: "nowrap" }}>{t.rent} €</span>
                     </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span
-                        style={{
-                          padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-                          background: isPaid ? GREEN_BG : RED_BG,
-                          color: isPaid ? GREEN : RED,
-                        }}
-                      >
+                    {/* Ligne 2 : email */}
+                    <p style={{ fontSize: 12, color: MUTE, marginTop: 2, marginBottom: 8 }}>{t.email}</p>
+                    {/* Ligne 3 : badge + actions */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{
+                        padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                        background: isPaid ? GREEN_BG : RED_BG,
+                        color: isPaid ? GREEN : RED,
+                      }}>
                         {isPaid ? "🟢 Payé" : "🔴 En attente"}
                       </span>
-
-                      <span style={{ fontFamily: display, fontWeight: 800, color: INK }}>{t.rent} €</span>
-
-                      <Link
-                        href={`/tenants/${t.id}`}
-                        style={{ color: BROWN, textDecoration: "underline", fontSize: 13, fontWeight: 600 }}
-                      >
+                      <Link href={`/tenants/${t.id}`} style={{ color: BROWN, textDecoration: "underline", fontSize: 13, fontWeight: 600 }}>
                         Voir
                       </Link>
-
-                      <button
-                        onClick={() => unlinkTenant(t.id)}
-                        style={{ background: "none", border: "none", color: RED, textDecoration: "underline", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: body }}
-                      >
+                      <button onClick={() => unlinkTenant(t.id)} style={{
+                        background: "none", border: "none", color: RED,
+                        textDecoration: "underline", fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", fontFamily: body, padding: 0,
+                      }}>
                         Retirer
                       </button>
                     </div>
@@ -310,20 +238,19 @@ export default function PropertyPage() {
                 </Link>
               </p>
             ) : (
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <select
                   value={selectedTenantId}
                   onChange={(e) => setSelectedTenantId(e.target.value)}
                   style={{
                     border: `2px solid ${FIELD_BORDER}`, background: FIELD_BG, padding: "11px 14px",
-                    borderRadius: 12, fontSize: 14, color: INK, fontFamily: body, outline: "none", flex: 1,
+                    borderRadius: 12, fontSize: 14, color: INK, fontFamily: body,
+                    outline: "none", flex: "1 1 160px", minWidth: "140px", boxSizing: "border-box",
                   }}
                 >
                   <option value="">Sélectionner un locataire...</option>
                   {allTenants.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} — {t.rent} €
-                    </option>
+                    <option key={t.id} value={t.id}>{t.name} — {t.rent} €</option>
                   ))}
                 </select>
 
@@ -332,7 +259,8 @@ export default function PropertyPage() {
                   disabled={!selectedTenantId || loadingLink}
                   style={{
                     background: INK, color: CREAM, padding: "11px 22px",
-                    borderRadius: 999, border: "none", fontSize: 14, fontWeight: 700, fontFamily: body,
+                    borderRadius: 999, border: "none", fontSize: 14, fontWeight: 700,
+                    fontFamily: body, whiteSpace: "nowrap",
                     cursor: !selectedTenantId || loadingLink ? "not-allowed" : "pointer",
                     opacity: !selectedTenantId || loadingLink ? 0.5 : 1,
                   }}
@@ -348,3 +276,4 @@ export default function PropertyPage() {
     </main>
   );
 }
+
