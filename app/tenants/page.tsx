@@ -6,6 +6,43 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
+/* ------------------------------------------------------------------
+   Locataires Loya — thème solaire, styles 100% en ligne (aucune
+   dépendance Tailwind). Toute la logique est identique à l'original.
+------------------------------------------------------------------- */
+
+const INK = "#1a1208";
+const CREAM = "#fbf1e3";
+const ORANGE = "#e8590c";
+const BROWN = "#b45309";
+const MUTE = "#a89372";
+const BORDER = "#efe3cd";
+const FIELD_BORDER = "#e6d6bb";
+const FIELD_BG = "#fdf8ef";
+const GREEN = "#1f7a37";
+const GREEN_BG = "#e3f3e4";
+const RED = "#b3361f";
+const RED_BG = "#fcece6";
+const AMBER = "#b45309";
+const AMBER_BG = "#fbeccf";
+
+const display = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+const mono = "var(--font-mono), 'Space Mono', ui-monospace, monospace";
+const body = "var(--font-manrope), 'Manrope', system-ui, sans-serif";
+
+const fieldStyle: React.CSSProperties = {
+  border: `2px solid ${FIELD_BORDER}`,
+  background: FIELD_BG,
+  padding: "11px 14px",
+  width: "100%",
+  borderRadius: 12,
+  fontSize: 14,
+  color: INK,
+  fontFamily: body,
+  outline: "none",
+  boxSizing: "border-box",
+};
+
 const REMINDER_OPTIONS = [
   { value: 0, label: "Le jour de l'échéance" },
   { value: 3, label: "3 jours après" },
@@ -198,24 +235,33 @@ export default function TenantsPage() {
     .reduce((sum, t) => sum + (t.rent || 0), 0);
 
   return (
-    <main style={{ minHeight: "100vh", background: "#f9fafb", padding: "16px" }}>
-      <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+    <main style={{ minHeight: "100vh", background: CREAM, padding: 16, fontFamily: body, position: "relative", overflow: "hidden" }}>
+      {/* SOLEIL décoratif */}
+      <div
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          right: -120,
+          top: -140,
+          width: 340,
+          height: 340,
+          borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+          opacity: 0.8,
+        }}
+      />
 
-        {/* NAVIGATION — wraps on mobile */}
-        <div style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "8px",
-          marginBottom: "24px",
-        }}>
+      <div style={{ position: "relative", maxWidth: 680, margin: "0 auto" }}>
+
+        {/* NAVIGATION */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
           <Link
             href="/dashboard"
             style={{
-              display: "inline-flex", alignItems: "center", gap: "6px",
-              background: "#fff", border: "1px solid #e5e7eb",
-              padding: "8px 14px", borderRadius: "10px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-              fontSize: "14px", color: "#374151", textDecoration: "none",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: "#fff", border: `2px solid ${FIELD_BORDER}`,
+              padding: "9px 16px", borderRadius: 999,
+              fontSize: 14, fontWeight: 700, color: INK, textDecoration: "none",
               whiteSpace: "nowrap",
             }}
           >
@@ -224,41 +270,32 @@ export default function TenantsPage() {
         </div>
 
         {/* TITRE */}
-        <h1 style={{ fontSize: "26px", fontWeight: 700, marginBottom: "16px" }}>
+        <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>
+          Gestion locative
+        </p>
+        <h1 style={{ fontFamily: display, fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 18 }}>
           👥 Locataires
         </h1>
 
         {/* RECHERCHE */}
         <input
-          style={{
-            border: "1px solid #d1d5db", padding: "10px 14px",
-            width: "100%", borderRadius: "10px", marginBottom: "16px",
-            fontSize: "14px", boxSizing: "border-box",
-          }}
+          style={{ ...fieldStyle, marginBottom: 16, fontSize: 15 }}
           placeholder="🔍 Rechercher par nom, email ou adresse..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* STATS — grille 2 colonnes toujours */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "10px",
-          marginBottom: "16px",
-        }}>
+        {/* STATS (discret, second plan) */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 24, paddingBottom: 18, marginBottom: 18, borderBottom: `1px solid ${FIELD_BORDER}` }}>
           {[
-            { label: "Locataires", value: totalTenants, color: "#1f2937" },
-            { label: "Loyers encaissés", value: paidCount, color: "#16a34a" },
-            { label: "En attente", value: pendingCount, color: "#dc2626" },
-            { label: "Montant encaissé", value: `${totalCollected} €`, color: "#1f2937" },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{
-              background: "#fff", borderRadius: "12px", padding: "14px 16px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            }}>
-              <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>{label}</p>
-              <p style={{ fontSize: "22px", fontWeight: 700, color }}>{value}</p>
+            { label: "Locataires", value: totalTenants },
+            { label: "Encaissés", value: paidCount },
+            { label: "En attente", value: pendingCount },
+            { label: "Montant encaissé", value: `${totalCollected} €` },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: MUTE, marginBottom: 3 }}>{label}</p>
+              <p style={{ fontFamily: display, fontSize: 17, fontWeight: 700, color: "#5c4a2e", margin: 0 }}>{value}</p>
             </div>
           ))}
         </div>
@@ -267,99 +304,85 @@ export default function TenantsPage() {
         <button
           onClick={() => setShowForm(!showForm)}
           style={{
-            background: "#2563eb", color: "#fff",
-            padding: "12px 20px", borderRadius: "10px",
+            background: INK, color: CREAM,
+            padding: "14px 20px", borderRadius: 999,
             border: "none", cursor: "pointer",
-            fontSize: "15px", fontWeight: 600,
-            width: "100%", marginBottom: "16px",
+            fontSize: 15, fontWeight: 700, fontFamily: body,
+            width: "100%", marginBottom: 16,
+            boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)",
           }}
         >
-          + Ajouter un locataire
+          {showForm ? "Fermer" : "+ Ajouter un locataire"}
         </button>
 
         {/* FORMULAIRE */}
         {showForm && (
-          <div style={{
-            background: "#fff", padding: "20px", borderRadius: "14px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: "20px",
-          }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "14px" }}>
+          <div style={{ background: "#fff", padding: 22, borderRadius: 20, border: `1px solid ${BORDER}`, boxShadow: "0 18px 40px -28px rgba(120,53,15,0.4)", marginBottom: 20 }}>
+            <h2 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 16 }}>
               {editingIndex !== null ? "Modifier locataire" : "Nouveau locataire"}
             </h2>
 
-            {[
-              { placeholder: "Nom", value: name, onChange: setName },
-              { placeholder: "Email", value: email, onChange: setEmail },
-              { placeholder: "Téléphone", value: phone, onChange: setPhone },
-              { placeholder: "Adresse du bien (ex: 12 rue des Lilas, Paris)", value: propertyAddress, onChange: setPropertyAddress },
-              { placeholder: "Loyer (€)", value: rent, onChange: setRent },
-            ].map(({ placeholder, value, onChange }) => (
-              <input
-                key={placeholder}
-                style={{
-                  border: "1px solid #d1d5db", padding: "10px 12px",
-                  width: "100%", borderRadius: "8px", marginBottom: "10px",
-                  fontSize: "14px", boxSizing: "border-box",
-                }}
-                placeholder={placeholder}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            ))}
-
-            <select
-              style={{
-                border: "1px solid #d1d5db", padding: "10px 12px",
-                width: "100%", borderRadius: "8px", marginBottom: "10px",
-                fontSize: "14px", color: "#374151", boxSizing: "border-box",
-                background: "#fff",
-              }}
-              value={propertyId}
-              onChange={(e) => setPropertyId(e.target.value)}
-            >
-              <option value="">Aucun bien rattaché</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.address} — {p.city}
-                </option>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { placeholder: "Nom", value: name, onChange: setName },
+                { placeholder: "Email", value: email, onChange: setEmail },
+                { placeholder: "Téléphone", value: phone, onChange: setPhone },
+                { placeholder: "Adresse du bien (ex: 12 rue des Lilas, Paris)", value: propertyAddress, onChange: setPropertyAddress },
+                { placeholder: "Loyer (€)", value: rent, onChange: setRent },
+              ].map(({ placeholder, value, onChange }) => (
+                <input
+                  key={placeholder}
+                  style={fieldStyle}
+                  placeholder={placeholder}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
               ))}
-            </select>
 
-            <input
-              type="number" min="1" max="31"
-              style={{
-                border: "1px solid #d1d5db", padding: "10px 12px",
-                width: "100%", borderRadius: "8px", marginBottom: "14px",
-                fontSize: "14px", boxSizing: "border-box",
-              }}
-              placeholder="Jour du mois pour l'échéance (ex: 5)"
-              value={rentDueDay}
-              onChange={(e) => setRentDueDay(e.target.value)}
-            />
+              <select
+                style={{ ...fieldStyle, color: INK, background: FIELD_BG }}
+                value={propertyId}
+                onChange={(e) => setPropertyId(e.target.value)}
+              >
+                <option value="">Aucun bien rattaché</option>
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.address} — {p.city}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="number" min="1" max="31"
+                style={fieldStyle}
+                placeholder="Jour du mois pour l'échéance (ex: 5)"
+                value={rentDueDay}
+                onChange={(e) => setRentDueDay(e.target.value)}
+              />
+            </div>
 
             {/* RELANCE AUTO */}
-            <div style={{
-              border: "1px solid #e5e7eb", borderRadius: "10px",
-              padding: "14px", marginBottom: "16px",
-            }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 500, cursor: "pointer" }}>
+            <div style={{ border: `2px solid ${FIELD_BORDER}`, borderRadius: 14, padding: 16, marginTop: 14, marginBottom: 16, background: FIELD_BG }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700, color: INK, cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={autoReminderEnabled}
                   onChange={(e) => setAutoReminderEnabled(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: ORANGE }}
                 />
-                Activer la relance automatique
+                🌞 Activer la relance automatique
               </label>
 
               {autoReminderEnabled && (
-                <div style={{ marginTop: "12px", paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Envoyer une relance :</p>
+                <div style={{ marginTop: 14, paddingLeft: 28, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: MUTE, marginBottom: 2 }}>Envoyer une relance :</p>
                   {REMINDER_OPTIONS.map((opt) => (
-                    <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#4b5563", cursor: "pointer" }}>
+                    <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#5c4a2e", cursor: "pointer" }}>
                       <input
                         type="checkbox"
                         checked={reminderDays.includes(opt.value)}
                         onChange={() => toggleReminderDay(opt.value)}
+                        style={{ width: 17, height: 17, accentColor: ORANGE }}
                       />
                       {opt.label}
                     </label>
@@ -368,13 +391,13 @@ export default function TenantsPage() {
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={editingIndex !== null ? updateTenant : addTenant}
                 style={{
-                  background: "#16a34a", color: "#fff",
-                  padding: "10px 20px", borderRadius: "8px",
-                  border: "none", cursor: "pointer", fontSize: "14px", fontWeight: 600,
+                  background: INK, color: CREAM,
+                  padding: "12px 20px", borderRadius: 999,
+                  border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body,
                   flex: 1,
                 }}
               >
@@ -383,9 +406,9 @@ export default function TenantsPage() {
               <button
                 onClick={resetForm}
                 style={{
-                  background: "#f3f4f6", color: "#374151",
-                  padding: "10px 20px", borderRadius: "8px",
-                  border: "none", cursor: "pointer", fontSize: "14px",
+                  background: "transparent", color: INK,
+                  padding: "12px 20px", borderRadius: 999,
+                  border: `2px solid ${INK}`, cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body,
                   flex: 1,
                 }}
               >
@@ -396,75 +419,71 @@ export default function TenantsPage() {
         )}
 
         {/* LISTE LOCATAIRES */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filteredTenants.map((t, i) => {
             const isPaid = !!payments[t.id]?.is_paid;
             const dueStatus = getDueStatus(t, isPaid);
 
             let badgeLabel = "🟢 Payé";
-            let badgeBg = "#dcfce7";
-            let badgeColor = "#15803d";
+            let badgeBg = GREEN_BG;
+            let badgeColor = GREEN;
 
             if (!isPaid) {
               if (dueStatus?.type === "late") {
                 badgeLabel = dueStatus.label;
-                badgeBg = "#fee2e2"; badgeColor = "#dc2626";
+                badgeBg = RED_BG; badgeColor = RED;
               } else if (dueStatus?.type === "today" || dueStatus?.type === "soon") {
                 badgeLabel = dueStatus.label;
-                badgeBg = "#fef3c7"; badgeColor = "#d97706";
+                badgeBg = AMBER_BG; badgeColor = AMBER;
               } else {
                 badgeLabel = "🔴 En attente";
-                badgeBg = "#fee2e2"; badgeColor = "#dc2626";
+                badgeBg = RED_BG; badgeColor = RED;
               }
             }
 
             return (
               <div
                 key={t.id ?? t.email}
-                style={{
-                  background: "#fff", borderRadius: "12px",
-                  padding: "14px 16px",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                }}
+                style={{ background: "#fff", borderRadius: 16, padding: "16px 18px", border: `1px solid ${BORDER}` }}
               >
                 {/* Ligne 1 : nom + loyer */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
-                  <p style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>{t.name}</p>
-                  <p style={{ fontWeight: 700, fontSize: "16px", margin: 0, whiteSpace: "nowrap", marginLeft: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                  <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK, margin: 0 }}>{t.name}</p>
+                  <p style={{ fontFamily: display, fontWeight: 800, fontSize: 17, color: INK, margin: 0, whiteSpace: "nowrap", marginLeft: 8 }}>
                     {t.rent} €
                   </p>
                 </div>
 
                 {/* Ligne 2 : email */}
-                <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 2px" }}>{t.email}</p>
+                <p style={{ fontSize: 13, color: "#7a684f", margin: "0 0 2px" }}>{t.email}</p>
 
                 {/* Ligne 3 : adresse */}
                 {t.property_address && (
-                  <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>
+                  <p style={{ fontSize: 13, color: MUTE, margin: "0 0 8px" }}>
                     📍 {t.property_address}
                   </p>
                 )}
 
                 {/* Ligne 4 : badge statut */}
-                <div style={{ marginBottom: "12px" }}>
+                <div style={{ marginBottom: 12 }}>
                   <span style={{
                     display: "inline-block",
                     background: badgeBg, color: badgeColor,
-                    padding: "4px 10px", borderRadius: "999px",
-                    fontSize: "12px", fontWeight: 600,
+                    padding: "4px 12px", borderRadius: 999,
+                    fontSize: 12, fontWeight: 700,
                   }}>
                     {badgeLabel}
                   </span>
                 </div>
 
                 {/* Ligne 5 : actions */}
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     onClick={() => startEdit(i)}
                     style={{
-                      background: "#f59e0b", color: "#fff",
-                      padding: "8px 14px", borderRadius: "8px",
-                      border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
+                      background: CREAM, color: BROWN,
+                      padding: "8px 14px", borderRadius: 999,
+                      border: `1px solid ${FIELD_BORDER}`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body,
                     }}
                   >
                     ✏️ Modifier
@@ -473,9 +492,9 @@ export default function TenantsPage() {
                   <button
                     onClick={() => deleteTenant(t.id)}
                     style={{
-                      background: "#ef4444", color: "#fff",
-                      padding: "8px 14px", borderRadius: "8px",
-                      border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
+                      background: RED_BG, color: RED,
+                      padding: "8px 14px", borderRadius: 999,
+                      border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body,
                     }}
                   >
                     🗑 Supprimer
@@ -484,9 +503,9 @@ export default function TenantsPage() {
                   <Link
                     href={`/tenants/${t.id}`}
                     style={{
-                      background: "#eff6ff", color: "#2563eb",
-                      padding: "8px 14px", borderRadius: "8px",
-                      fontSize: "13px", fontWeight: 500,
+                      background: INK, color: CREAM,
+                      padding: "8px 14px", borderRadius: 999,
+                      fontSize: 13, fontWeight: 700,
                       textDecoration: "none", display: "inline-block",
                     }}
                   >

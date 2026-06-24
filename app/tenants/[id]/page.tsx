@@ -5,6 +5,39 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
+/* ------------------------------------------------------------------
+   Fiche dossier locataire Loya — thème solaire, styles 100% en ligne.
+   Toute la logique (paiements, quittances, relances, documents) est
+   strictement identique à l'original.
+------------------------------------------------------------------- */
+
+const INK = "#1a1208";
+const CREAM = "#fbf1e3";
+const ORANGE = "#e8590c";
+const BROWN = "#b45309";
+const MUTE = "#a89372";
+const BORDER = "#efe3cd";
+const FIELD_BORDER = "#e6d6bb";
+const FIELD_BG = "#fdf8ef";
+const GREEN = "#1f7a37";
+const GREEN_BG = "#e3f3e4";
+const RED = "#b3361f";
+const RED_BG = "#fcece6";
+const AMBER = "#b45309";
+const AMBER_BG = "#fbeccf";
+
+const display = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+const mono = "var(--font-mono), 'Space Mono', ui-monospace, monospace";
+const body = "var(--font-manrope), 'Manrope', system-ui, sans-serif";
+
+const sectionTitle: React.CSSProperties = {
+  fontFamily: display,
+  fontSize: 17,
+  fontWeight: 700,
+  color: INK,
+  marginBottom: 4,
+};
+
 function getCurrentMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -36,104 +69,99 @@ export default function TenantPage() {
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState("Bail");
 
-  
-
   useEffect(() => {
     fetchAll();
   }, [params.id]);
 
   async function fetchDocuments() {
-  const { data, error } = await supabase
-    .from("documents")
-    .select("*")
-    .eq("tenant_id", params.id)
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("documents")
+      .select("*")
+      .eq("tenant_id", params.id)
+      .order("created_at", { ascending: false });
 
-  if (!error) {
-    setDocuments(data || []);
-  } else {
-    console.log("Erreur fetch documents:", error);
+    if (!error) {
+      setDocuments(data || []);
+    } else {
+      console.log("Erreur fetch documents:", error);
+    }
   }
-}
 
-async function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  async function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  setUploadingDoc(true);
+    setUploadingDoc(true);
 
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
 
-  const filePath = `${userId}/${params.id}/${Date.now()}_${file.name}`;
+    const filePath = `${userId}/${params.id}/${Date.now()}_${file.name}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("documents")
-    .upload(filePath, file, { upsert: false });
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(filePath, file, { upsert: false });
 
-  if (uploadError) {
-    toast.error("Impossible d'uploader le document.");
+    if (uploadError) {
+      toast.error("Impossible d'uploader le document.");
+      setUploadingDoc(false);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("documents")
+      .getPublicUrl(filePath);
+
+    const { error: insertError } = await supabase
+      .from("documents")
+      .insert({
+        tenant_id: params.id,
+        user_id: userId,
+        type: selectedDocType,
+        name: file.name,
+        file_url: publicUrlData.publicUrl,
+      });
+
     setUploadingDoc(false);
-    return;
+
+    if (insertError) {
+      toast.error("Erreur lors de l'enregistrement du document.");
+    } else {
+      toast.success("Document ajouté !");
+      await fetchDocuments();
+      e.target.value = "";
+    }
   }
 
-  const { data: publicUrlData } = supabase.storage
-    .from("documents")
-    .getPublicUrl(filePath);
+  async function deleteDocument(doc: any) {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
 
-  const { error: insertError } = await supabase
-    .from("documents")
-    .insert({
-      tenant_id: params.id,
-      user_id: userId,
-      type: selectedDocType,
-      name: file.name,
-      file_url: publicUrlData.publicUrl,
-    });
+    const filePath = doc.file_url.split("/documents/")[1];
 
-  setUploadingDoc(false);
+    await supabase.storage
+      .from("documents")
+      .remove([filePath]);
 
-  if (insertError) {
-    toast.error("Erreur lors de l'enregistrement du document.");
-  } else {
-    toast.success("Document ajouté !");
-    await fetchDocuments();
-    // Reset l'input file
-    e.target.value = "";
+    const { error } = await supabase
+      .from("documents")
+      .delete()
+      .eq("id", doc.id);
+
+    if (!error) {
+      toast.success("Document supprimé.");
+      await fetchDocuments();
+    } else {
+      toast.error("Impossible de supprimer le document.");
+    }
   }
-}
-
-async function deleteDocument(doc: any) {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-
-  // Extrait le chemin du fichier depuis l'URL publique
-  const filePath = doc.file_url.split("/documents/")[1];
-
-  await supabase.storage
-    .from("documents")
-    .remove([filePath]);
-
-  const { error } = await supabase
-    .from("documents")
-    .delete()
-    .eq("id", doc.id);
-
-  if (!error) {
-    toast.success("Document supprimé.");
-    await fetchDocuments();
-  } else {
-    toast.error("Impossible de supprimer le document.");
-  }
-}
 
   async function fetchAll() {
     await fetchTenant();
     await fetchCurrentPayment();
     await fetchHistory();
     await fetchReceipts();
-    await fetchDocuments(); 
-
+    await fetchDocuments();
   }
 
   async function fetchTenant() {
@@ -215,7 +243,6 @@ async function deleteDocument(doc: any) {
     }
   }
 
-  // ➜ Génère (ou régénère) la quittance pour un paiement donné
   async function generateReceipt(paymentId: string) {
     try {
       const res = await fetch("/api/generate-receipt", {
@@ -269,7 +296,6 @@ async function deleteDocument(doc: any) {
     setCurrentPayment(data);
     await fetchHistory();
 
-    // ➜ Génère automatiquement la quittance si on vient de marquer "payé"
     if (newStatus) {
       await generateReceipt(data.id);
     }
@@ -312,7 +338,6 @@ async function deleteDocument(doc: any) {
     setLoadingHistoryId(null);
   }
 
-  // ➜ Envoie la quittance par email
   async function sendReceipt(receipt: any) {
     setLoadingReceiptId(receipt.id);
 
@@ -321,11 +346,11 @@ async function deleteDocument(doc: any) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-        email: tenant.email,
-        name: tenant.name,
-        pdfUrl: receipt.pdf_url,
-        month: formatMonth(receipt.month),
-        ownerId: tenant.user_id,
+          email: tenant.email,
+          name: tenant.name,
+          pdfUrl: receipt.pdf_url,
+          month: formatMonth(receipt.month),
+          ownerId: tenant.user_id,
         }),
       });
 
@@ -337,7 +362,7 @@ async function deleteDocument(doc: any) {
         toast.success("Quittance envoyée avec succès !");
       }
     } catch (err) {
-      toast.error("Erreur réseau, vérifiez votre connexion internet.");-
+      toast.error("Erreur réseau, vérifiez votre connexion internet.");
       console.error(err);
     } finally {
       setLoadingReceiptId(null);
@@ -352,10 +377,10 @@ async function deleteDocument(doc: any) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-        email: tenant.email,
-        name: tenant.name,
-        rent: tenant.rent,
-        ownerId: tenant.user_id,
+          email: tenant.email,
+          name: tenant.name,
+          rent: tenant.rent,
+          ownerId: tenant.user_id,
         }),
       });
 
@@ -438,8 +463,8 @@ async function deleteDocument(doc: any) {
 
   if (!tenant) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Chargement...</p>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: CREAM, fontFamily: body }}>
+        <p style={{ fontFamily: mono, fontSize: 14, color: MUTE }}>Chargement...</p>
       </div>
     );
   }
@@ -448,60 +473,86 @@ async function deleteDocument(doc: any) {
   const isPaidThisMonth = !!currentPayment?.is_paid;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-10">
-      <div className="max-w-xl mx-auto">
+    <main style={{ minHeight: "100vh", background: CREAM, padding: 24, fontFamily: body, position: "relative", overflow: "hidden" }}>
+      {/* SOLEIL décoratif */}
+      <div
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          right: -120,
+          top: -140,
+          width: 340,
+          height: 340,
+          borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+          opacity: 0.8,
+        }}
+      />
+
+      <div style={{ position: "relative", maxWidth: 580, margin: "0 auto" }}>
 
         <button
           onClick={() => router.back()}
-          className="text-sm text-gray-500 hover:text-gray-700 mb-6 inline-flex items-center gap-1"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "#fff", border: `2px solid ${FIELD_BORDER}`,
+            padding: "9px 16px", borderRadius: 999,
+            fontSize: 14, fontWeight: 700, color: INK, cursor: "pointer",
+            fontFamily: body, marginBottom: 16,
+          }}
         >
           ← Retour
         </button>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+        <div style={{ background: "#fff", borderRadius: 24, border: `1px solid ${BORDER}`, boxShadow: "0 24px 60px -34px rgba(120,53,15,0.4)", padding: 32 }}>
 
-          <div className="flex items-start justify-between mb-6">
+          {/* EN-TÊTE */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 24 }}>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{tenant.name}</h1>
-              <p className="text-gray-500 text-sm mt-1">{tenant.email}</p>
+              <h1 style={{ fontFamily: display, fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", color: INK }}>{tenant.name}</h1>
+              <p style={{ fontSize: 14, color: "#7a684f", marginTop: 4 }}>{tenant.email}</p>
               {tenant.phone && (
-                <p className="text-gray-500 text-sm mt-1">
-                  📞 <a href={`tel:${tenant.phone}`} className="hover:underline">{tenant.phone}</a>
+                <p style={{ fontSize: 14, color: "#7a684f", marginTop: 4 }}>
+                  📞 <a href={`tel:${tenant.phone}`} style={{ color: BROWN, textDecoration: "none" }}>{tenant.phone}</a>
                 </p>
               )}
               {tenant.property_address && (
-                <p className="text-gray-400 text-sm mt-1">📍 {tenant.property_address}</p>
+                <p style={{ fontSize: 14, color: MUTE, marginTop: 4 }}>📍 {tenant.property_address}</p>
               )}
             </div>
 
             <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                isPaidThisMonth
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
+              style={{
+                flexShrink: 0,
+                padding: "5px 12px", borderRadius: 999, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+                background: isPaidThisMonth ? GREEN_BG : RED_BG,
+                color: isPaidThisMonth ? GREEN : RED,
+              }}
             >
               {isPaidThisMonth ? "🟢 Payé ce mois" : "🔴 En attente"}
             </span>
           </div>
 
+          {/* STATUT ÉCHÉANCE */}
           {dueStatus && (
             <div
-              className={`mb-6 px-4 py-3 rounded-lg text-sm font-medium ${
-                dueStatus.type === "late"
-                  ? "bg-red-50 text-red-700 border border-red-200"
-                  : "bg-amber-50 text-amber-700 border border-amber-200"
-              }`}
+              style={{
+                marginBottom: 24, padding: "12px 16px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                background: dueStatus.type === "late" ? RED_BG : AMBER_BG,
+                color: dueStatus.type === "late" ? RED : AMBER,
+                border: `1px solid ${dueStatus.type === "late" ? "#f1c9bd" : "#f0d9a8"}`,
+              }}
             >
               {dueStatus.label}
             </div>
           )}
 
+          {/* RELANCE AUTO */}
           {tenant.auto_reminder_enabled && (
-            <div className="mb-6 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
-              <span className="font-medium">🔁 Relance automatique activée</span>
+            <div style={{ marginBottom: 24, padding: "12px 16px", borderRadius: 12, background: CREAM, border: `1px solid ${FIELD_BORDER}` }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: BROWN }}>🌞 Relance automatique activée</span>
               {tenant.reminder_days?.length > 0 && (
-                <p className="text-xs text-blue-600 mt-1">
+                <p style={{ fontSize: 12.5, color: "#8a6f44", marginTop: 4 }}>
                   Envoi à : {tenant.reminder_days
                     .map((d: number) => (d === 0 ? "J (échéance)" : `J+${d}`))
                     .join(", ")}
@@ -510,48 +561,59 @@ async function deleteDocument(doc: any) {
             </div>
           )}
 
-          <div className="bg-gray-50 rounded-lg p-5 mb-6">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-sm">Loyer mensuel</span>
-              <span className="text-2xl font-bold text-gray-900">{tenant.rent} €</span>
+          {/* BLOC LOYER */}
+          <div style={{ background: FIELD_BG, borderRadius: 14, padding: 20, marginBottom: 24, border: `1px solid ${FIELD_BORDER}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 14, color: "#7a684f", fontWeight: 600 }}>Loyer mensuel</span>
+              <span style={{ fontFamily: display, fontSize: 24, fontWeight: 800, color: INK }}>{tenant.rent} €</span>
             </div>
             {tenant.rent_due_day && (
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-gray-600 text-sm">Échéance</span>
-                <span className="text-sm text-gray-700">Le {tenant.rent_due_day} du mois</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                <span style={{ fontSize: 14, color: "#7a684f", fontWeight: 600 }}>Échéance</span>
+                <span style={{ fontSize: 14, color: INK, fontWeight: 600 }}>Le {tenant.rent_due_day} du mois</span>
               </div>
             )}
             {tenant.last_reminder_sent_at && (
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-gray-600 text-sm">Dernière relance</span>
-                <span className="text-sm text-gray-700">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                <span style={{ fontSize: 14, color: "#7a684f", fontWeight: 600 }}>Dernière relance</span>
+                <span style={{ fontSize: 14, color: INK, fontWeight: 600 }}>
                   {formatDateTime(tenant.last_reminder_sent_at)}
                 </span>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-3 mb-8">
+          {/* ACTIONS PRINCIPALES */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
             <button
               onClick={togglePaid}
               disabled={loadingPayment}
-              className={`px-4 py-3 rounded-lg font-medium transition disabled:opacity-50 ${
-                isPaidThisMonth
-                  ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  : "bg-green-600 text-white hover:bg-green-700"
-              }`}
+              style={{
+                padding: "14px 18px", borderRadius: 999, fontFamily: body, fontWeight: 700, fontSize: 15,
+                cursor: "pointer", transition: "opacity .2s", opacity: loadingPayment ? 0.5 : 1,
+                border: isPaidThisMonth ? `2px solid ${FIELD_BORDER}` : "none",
+                background: isPaidThisMonth ? "transparent" : GREEN,
+                color: isPaidThisMonth ? "#7a684f" : "#fff",
+              }}
             >
               {loadingPayment
                 ? "Mise à jour..."
                 : isPaidThisMonth
                 ? "Marquer comme impayé"
-                : "Marquer comme payé ce mois"}
+                : "✓ Marquer comme payé ce mois"}
             </button>
 
             <button
               onClick={sendReminder}
               disabled={loadingEmail || isPaidThisMonth}
-              className="bg-red-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                padding: "14px 18px", borderRadius: 999, fontFamily: body, fontWeight: 700, fontSize: 15,
+                border: "none",
+                cursor: loadingEmail || isPaidThisMonth ? "not-allowed" : "pointer",
+                opacity: loadingEmail || isPaidThisMonth ? 0.5 : 1,
+                background: INK, color: CREAM,
+                boxShadow: loadingEmail || isPaidThisMonth ? "none" : "0 8px 20px -8px rgba(26,18,8,0.5)",
+              }}
             >
               {loadingEmail
                 ? "Envoi en cours..."
@@ -562,31 +624,32 @@ async function deleteDocument(doc: any) {
           </div>
 
           {/* HISTORIQUE DES PAIEMENTS */}
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-700 mb-1">
-              Historique des paiements
-            </h2>
-            <p className="text-xs text-gray-400 mb-3">
+          <div style={{ marginBottom: 32 }}>
+            <h2 style={sectionTitle}>Historique des paiements</h2>
+            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 12 }}>
               Cliquez sur un mois pour corriger son statut
             </p>
 
             {history.length === 0 ? (
-              <p className="text-sm text-gray-400">Aucun historique pour le moment.</p>
+              <p style={{ fontSize: 14, color: MUTE }}>Aucun historique pour le moment.</p>
             ) : (
-              <div className="space-y-1">
+              <div style={{ display: "flex", flexDirection: "column" }}>
                 {history.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => toggleHistoryPayment(p)}
                     disabled={loadingHistoryId === p.id}
-                    className="w-full flex justify-between items-center text-sm border-b border-gray-100 py-2 px-2 rounded hover:bg-gray-50 transition disabled:opacity-50"
+                    style={{
+                      width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                      fontSize: 14, borderBottom: `1px solid ${BORDER}`, padding: "10px 8px",
+                      borderRadius: 8, background: "transparent", border: "none",
+                      borderBottomWidth: 1, borderBottomStyle: "solid", borderBottomColor: BORDER,
+                      cursor: "pointer", fontFamily: body,
+                      opacity: loadingHistoryId === p.id ? 0.5 : 1,
+                    }}
                   >
-                    <span className="text-gray-700 capitalize">{formatMonth(p.month)}</span>
-                    <span
-                      className={`font-medium ${
-                        p.is_paid ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
+                    <span style={{ color: "#5c4a2e", textTransform: "capitalize", fontWeight: 600 }}>{formatMonth(p.month)}</span>
+                    <span style={{ fontWeight: 700, color: p.is_paid ? GREEN : RED }}>
                       {loadingHistoryId === p.id
                         ? "Mise à jour..."
                         : p.is_paid
@@ -601,37 +664,40 @@ async function deleteDocument(doc: any) {
 
           {/* HISTORIQUE DES QUITTANCES */}
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">
-              📄 Quittances de loyer
-            </h2>
+            <h2 style={{ ...sectionTitle, marginBottom: 12 }}>📄 Quittances de loyer</h2>
 
             {receipts.length === 0 ? (
-              <p className="text-sm text-gray-400">
+              <p style={{ fontSize: 14, color: MUTE, lineHeight: 1.5 }}>
                 Aucune quittance pour le moment. Elle sera générée automatiquement dès qu'un mois est marqué payé.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {receipts.map((r) => (
                   <div
                     key={r.id}
-                    className="flex justify-between items-center text-sm border border-gray-100 rounded-lg px-3 py-2"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "10px 14px" }}
                   >
-                    <span className="text-gray-700 capitalize">{formatMonth(r.month)}</span>
+                    <span style={{ color: "#5c4a2e", textTransform: "capitalize", fontWeight: 600 }}>{formatMonth(r.month)}</span>
 
-                    <div className="flex items-center gap-3">
-                        <a
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <a
                         href={r.pdf_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-xs"
-                    >
+                        style={{ color: BROWN, textDecoration: "underline", fontSize: 13, fontWeight: 600 }}
+                      >
                         Télécharger
-                    </a>
+                      </a>
 
                       <button
                         onClick={() => sendReceipt(r)}
                         disabled={loadingReceiptId === r.id}
-                        className="bg-gray-800 text-white text-xs px-3 py-1 rounded hover:bg-gray-900 transition disabled:opacity-50"
+                        style={{
+                          background: INK, color: CREAM, fontSize: 13, fontWeight: 700,
+                          padding: "7px 14px", borderRadius: 999, border: "none",
+                          cursor: "pointer", fontFamily: body,
+                          opacity: loadingReceiptId === r.id ? 0.5 : 1,
+                        }}
                       >
                         {loadingReceiptId === r.id ? "Envoi..." : "Envoyer"}
                       </button>
@@ -643,79 +709,82 @@ async function deleteDocument(doc: any) {
           </div>
 
           {/* DOCUMENTS */}
-            <div className="mt-8 pt-6 border-t border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">
-                📁 Documents
-              </h2>
+          <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${FIELD_BORDER}` }}>
+            <h2 style={{ ...sectionTitle, marginBottom: 12 }}>📁 Documents</h2>
 
-              {/* Sélecteur de type + bouton upload */}
-              <div className="flex flex-col gap-2 mb-4">
-                <select
-                  value={selectedDocType}
-                  onChange={(e) => setSelectedDocType(e.target.value)}
-                  className="border p-2 rounded text-sm text-gray-700"
-                >
-                  {DOCUMENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+            {/* Sélecteur de type + bouton upload */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+              <select
+                value={selectedDocType}
+                onChange={(e) => setSelectedDocType(e.target.value)}
+                style={{
+                  border: `2px solid ${FIELD_BORDER}`, background: FIELD_BG, padding: "11px 14px",
+                  borderRadius: 12, fontSize: 14, color: INK, fontFamily: body, outline: "none",
+                }}
+              >
+                {DOCUMENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
 
-                <label className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition w-fit">
-                  {uploadingDoc ? "Envoi en cours..." : "📤 Ajouter un document"}
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    onChange={handleDocumentUpload}
-                    disabled={uploadingDoc}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <label
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  background: INK, color: CREAM, fontSize: 14, fontWeight: 700,
+                  padding: "11px 20px", borderRadius: 999, cursor: "pointer", width: "fit-content",
+                }}
+              >
+                {uploadingDoc ? "Envoi en cours..." : "📤 Ajouter un document"}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={handleDocumentUpload}
+                  disabled={uploadingDoc}
+                  style={{ display: "none" }}
+                />
+              </label>
+            </div>
 
-              {/* Liste des documents */}
-                {documents.length === 0 ? (
-                  <p className="text-sm text-gray-400">
-                    Aucun document pour le moment.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="flex justify-between items-center text-sm border border-gray-100 rounded-lg px-3 py-2"
+            {/* Liste des documents */}
+            {documents.length === 0 ? (
+              <p style={{ fontSize: 14, color: MUTE }}>Aucun document pour le moment.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "10px 14px" }}
+                  >
+                    <div>
+                      <p style={{ fontWeight: 700, color: INK }}>
+                        {DOCUMENT_TYPES.find((t) => t.value === doc.type)?.label || doc.type}
+                      </p>
+                      <p style={{ fontSize: 12, color: MUTE, marginTop: 2 }}>{doc.name}</p>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <a
+                        href={doc.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: BROWN, textDecoration: "underline", fontSize: 13, fontWeight: 600 }}
                       >
-                        <div>
-                          <p className="font-medium text-gray-700">
-                            {DOCUMENT_TYPES.find((t) => t.value === doc.type)?.label || doc.type}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-0.5">{doc.name}</p>
-                        </div>
-
-                        <div className="flex items-center gap-3"><a
-                          
-                            href={doc.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-xs"
-                          >
-                            Voir
-                          </a>
-                          <button
-                            onClick={() => deleteDocument(doc)}
-                            className="text-red-500 hover:underline text-xs"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                        Voir
+                      </a>
+                      <button
+                        onClick={() => deleteDocument(doc)}
+                        style={{ background: "none", border: "none", color: RED, textDecoration: "underline", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: body }}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-
-
+            )}
+          </div>
 
         </div>
       </div>
