@@ -50,7 +50,6 @@ export default function PropertiesPage() {
       .select("*")
       .eq("user_id", userData.user?.id)
       .order("created_at", { ascending: false });
-
     if (!error) setProperties(data || []);
   }
 
@@ -60,75 +59,39 @@ export default function PropertiesPage() {
       .from("tenants")
       .select("*")
       .eq("user_id", userData.user?.id);
-
     if (!error) setTenants(data || []);
   }
 
   async function addProperty() {
     setLoading(true);
     const { data: userData } = await supabase.auth.getUser();
-
     const { error } = await supabase.from("properties").insert([{
       user_id: userData.user?.id,
-      address,
-      postal_code: postalCode,
-      city,
-      type,
+      address, postal_code: postalCode, city, type,
       surface: surface ? Number(surface) : null,
-      description,
-      is_vacant: true,
+      description, is_vacant: true,
     }]);
-
     setLoading(false);
-
-    if (!error) {
-      toast.success("Bien ajouté !");
-      resetForm();
-      await fetchAll();
-    } else {
-      toast.error("Impossible d'ajouter le bien.");
-    }
+    if (!error) { toast.success("Bien ajouté !"); resetForm(); await fetchAll(); }
+    else toast.error("Impossible d'ajouter le bien.");
   }
 
   async function updateProperty() {
     if (!editingId) return;
     setLoading(true);
-
     const { error } = await supabase
       .from("properties")
-      .update({
-        address,
-        postal_code: postalCode,
-        city,
-        type,
-        surface: surface ? Number(surface) : null,
-        description,
-      })
+      .update({ address, postal_code: postalCode, city, type, surface: surface ? Number(surface) : null, description })
       .eq("id", editingId);
-
     setLoading(false);
-
-    if (!error) {
-      toast.success("Bien modifié !");
-      resetForm();
-      await fetchAll();
-    } else {
-      toast.error("Impossible de modifier le bien.");
-    }
+    if (!error) { toast.success("Bien modifié !"); resetForm(); await fetchAll(); }
+    else toast.error("Impossible de modifier le bien.");
   }
 
   async function deleteProperty(id: string) {
-    const { error } = await supabase
-      .from("properties")
-      .delete()
-      .eq("id", id);
-
-    if (!error) {
-      toast.success("Bien supprimé.");
-      await fetchAll();
-    } else {
-      toast.error("Impossible de supprimer le bien.");
-    }
+    const { error } = await supabase.from("properties").delete().eq("id", id);
+    if (!error) { toast.success("Bien supprimé."); await fetchAll(); }
+    else toast.error("Impossible de supprimer le bien.");
   }
 
   function startEdit(property: any) {
@@ -143,14 +106,8 @@ export default function PropertiesPage() {
   }
 
   function resetForm() {
-    setEditingId(null);
-    setAddress("");
-    setPostalCode("");
-    setCity("");
-    setType("Appartement");
-    setSurface("");
-    setDescription("");
-    setShowForm(false);
+    setEditingId(null); setAddress(""); setPostalCode(""); setCity("");
+    setType("Appartement"); setSurface(""); setDescription(""); setShowForm(false);
   }
 
   function getTenantsForProperty(propertyId: string) {
@@ -158,8 +115,7 @@ export default function PropertiesPage() {
   }
 
   function getTotalRent(propertyId: string) {
-    return getTenantsForProperty(propertyId)
-      .reduce((sum, t) => sum + (Number(t.rent) || 0), 0);
+    return getTenantsForProperty(propertyId).reduce((sum, t) => sum + (Number(t.rent) || 0), 0);
   }
 
   const totalProperties = properties.length;
@@ -173,71 +129,96 @@ export default function PropertiesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-gray-50 p-10">
-      <div className="max-w-3xl mx-auto">
+    <main style={{ minHeight: "100vh", background: "#f9fafb", padding: "16px", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ maxWidth: "680px", margin: "0 auto" }}>
 
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 transition mb-6"
-        >
-          ← Accueil
-        </Link>
+        {/* RETOUR */}
+        <div style={{ marginBottom: "20px" }}>
+          <Link href="/dashboard" style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            background: "#fff", border: "1px solid #e5e7eb",
+            padding: "8px 14px", borderRadius: "10px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            fontSize: "14px", color: "#374151", textDecoration: "none",
+          }}>
+            ← Accueil
+          </Link>
+        </div>
 
-        <h1 className="text-3xl font-bold mb-6">🏠 Mes biens</h1>
+        {/* TITRE */}
+        <h1 style={{ fontSize: "26px", fontWeight: 700, marginBottom: "16px" }}>🏠 Mes biens</h1>
 
+        {/* RECHERCHE */}
         <input
-          className="border p-2 w-full rounded-lg mb-6 text-sm"
+          style={{
+            border: "1px solid #d1d5db", padding: "10px 14px", width: "100%",
+            borderRadius: "10px", marginBottom: "16px", fontSize: "14px", boxSizing: "border-box",
+          }}
           placeholder="🔍 Rechercher par adresse ou ville..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* DASHBOARD */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">Total biens</p>
-            <p className="text-2xl font-bold text-gray-900">{totalProperties}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">Occupés</p>
-            <p className="text-2xl font-bold text-green-600">{occupiedCount}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">Vacants</p>
-            <p className="text-2xl font-bold text-red-600">{vacantCount}</p>
-          </div>
+        {/* STATS — auto-fill : 1 col sur très petit, 3 col sur grand */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+          gap: "10px", marginBottom: "20px",
+        }}>
+          {[
+            { label: "Total biens", value: totalProperties, color: "#111827" },
+            { label: "Occupés", value: occupiedCount, color: "#16a34a" },
+            { label: "Vacants", value: vacantCount, color: "#dc2626" },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{
+              background: "#fff", borderRadius: "12px", padding: "14px 16px",
+              border: "1px solid #f3f4f6", boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            }}>
+              <p style={{ fontSize: "12px", color: "#6b7280", margin: "0 0 4px" }}>{label}</p>
+              <p style={{ fontSize: "22px", fontWeight: 700, color, margin: 0 }}>{value}</p>
+            </div>
+          ))}
         </div>
 
+        {/* BOUTON AJOUTER */}
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg mb-6"
+          style={{
+            background: "#2563eb", color: "#fff", padding: "12px 20px",
+            borderRadius: "10px", border: "none", cursor: "pointer",
+            fontSize: "15px", fontWeight: 600, width: "100%", marginBottom: "16px",
+          }}
         >
           + Ajouter un bien
         </button>
 
         {/* FORMULAIRE */}
         {showForm && (
-          <div className="bg-white p-6 rounded-xl shadow mb-6">
-            <h2 className="text-lg font-semibold mb-4">
+          <div style={{
+            background: "#fff", padding: "20px", borderRadius: "14px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: "20px",
+          }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "14px" }}>
               {editingId ? "Modifier le bien" : "Nouveau bien"}
             </h2>
 
             <input
-              className="border p-2 w-full mb-2 rounded"
+              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "10px", fontSize: "14px", boxSizing: "border-box" }}
               placeholder="Adresse"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
 
-            <div className="flex gap-3 mb-2">
+            {/* Code postal + Ville — s'empilent sur très petit écran */}
+            <div style={{ display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
               <input
-                className="border p-2 w-1/3 rounded"
+                style={{ border: "1px solid #d1d5db", padding: "10px 12px", borderRadius: "8px", fontSize: "14px", flex: "1 1 100px", minWidth: "80px", boxSizing: "border-box" }}
                 placeholder="Code postal"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
               />
               <input
-                className="border p-2 w-2/3 rounded"
+                style={{ border: "1px solid #d1d5db", padding: "10px 12px", borderRadius: "8px", fontSize: "14px", flex: "2 1 160px", minWidth: "120px", boxSizing: "border-box" }}
                 placeholder="Ville"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
@@ -245,7 +226,7 @@ export default function PropertiesPage() {
             </div>
 
             <select
-              className="border p-2 w-full mb-2 rounded text-gray-700"
+              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "10px", fontSize: "14px", color: "#374151", background: "#fff", boxSizing: "border-box" }}
               value={type}
               onChange={(e) => setType(e.target.value)}
             >
@@ -255,7 +236,7 @@ export default function PropertiesPage() {
             </select>
 
             <input
-              className="border p-2 w-full mb-2 rounded"
+              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "10px", fontSize: "14px", boxSizing: "border-box" }}
               placeholder="Surface (m²)"
               type="number"
               value={surface}
@@ -263,24 +244,33 @@ export default function PropertiesPage() {
             />
 
             <textarea
-              className="border p-2 w-full mb-4 rounded text-sm"
+              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "16px", fontSize: "14px", boxSizing: "border-box", resize: "vertical" }}
               placeholder="Description (optionnel)"
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
 
-            <div className="flex gap-2">
+            <div style={{ display: "flex", gap: "10px" }}>
               <button
                 onClick={editingId ? updateProperty : addProperty}
                 disabled={loading}
-                className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                style={{
+                  background: "#16a34a", color: "#fff", padding: "10px 20px",
+                  borderRadius: "8px", border: "none", cursor: "pointer",
+                  fontSize: "14px", fontWeight: 600, flex: 1,
+                  opacity: loading ? 0.5 : 1,
+                }}
               >
                 {loading ? "Enregistrement..." : editingId ? "Modifier" : "Ajouter"}
               </button>
               <button
                 onClick={resetForm}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded"
+                style={{
+                  background: "#f3f4f6", color: "#374151", padding: "10px 20px",
+                  borderRadius: "8px", border: "none", cursor: "pointer",
+                  fontSize: "14px", flex: 1,
+                }}
               >
                 Annuler
               </button>
@@ -289,9 +279,9 @@ export default function PropertiesPage() {
         )}
 
         {/* LISTE DES BIENS */}
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {filteredProperties.length === 0 ? (
-            <p className="text-sm text-gray-400">
+            <p style={{ fontSize: "13px", color: "#9ca3af" }}>
               {search ? "Aucun bien trouvé." : "Aucun bien pour le moment."}
             </p>
           ) : (
@@ -301,51 +291,59 @@ export default function PropertiesPage() {
               const isVacant = propertyTenants.length === 0;
 
               return (
-                <div
-                  key={p.id}
-                  className="bg-white p-4 rounded-lg shadow flex justify-between items-center"
-                >
-                  <div>
-                    <p className="font-semibold">{p.address}</p>
-                    <p className="text-sm text-gray-500">{p.postal_code} {p.city}</p>
-                    <p className="text-sm text-gray-400">{p.type}{p.surface ? ` · ${p.surface} m²` : ""}</p>
+                <div key={p.id} style={{
+                  background: "#fff", borderRadius: "12px", padding: "14px 16px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                }}>
+                  {/* Ligne 1 : adresse + badge */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", marginBottom: "4px" }}>
+                    <p style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>{p.address}</p>
+                    <span style={{
+                      flexShrink: 0,
+                      padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
+                      background: isVacant ? "#fee2e2" : "#dcfce7",
+                      color: isVacant ? "#dc2626" : "#16a34a",
+                    }}>
+                      {isVacant ? "🔴 Vacant" : `🟢 ${propertyTenants.length} loc.`}
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          isVacant
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {isVacant ? "🔴 Vacant" : `🟢 ${propertyTenants.length} locataire${propertyTenants.length > 1 ? "s" : ""}`}
-                      </span>
-                      {totalRent > 0 && (
-                        <p className="text-sm font-bold text-gray-700 mt-1">{totalRent} €/mois</p>
-                      )}
-                    </div>
+                  {/* Ligne 2 : ville + type */}
+                  <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 2px" }}>{p.postal_code} {p.city}</p>
+                  <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>
+                    {p.type}{p.surface ? ` · ${p.surface} m²` : ""}
+                  </p>
 
+                  {/* Ligne 3 : loyer */}
+                  {totalRent > 0 && (
+                    <p style={{ fontSize: "14px", fontWeight: 700, color: "#374151", margin: "0 0 10px" }}>{totalRent} €/mois</p>
+                  )}
+
+                  {/* Ligne 4 : actions */}
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       onClick={() => startEdit(p)}
-                      className="bg-yellow-500 text-white px-3 py-1 rounded"
+                      style={{
+                        background: "#f59e0b", color: "#fff", padding: "8px 14px",
+                        borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
+                      }}
                     >
-                      ✏️
+                      ✏️ Modifier
                     </button>
-
                     <button
                       onClick={() => deleteProperty(p.id)}
-                      className="bg-red-500 text-white px-3 py-1 rounded"
+                      style={{
+                        background: "#ef4444", color: "#fff", padding: "8px 14px",
+                        borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
+                      }}
                     >
-                      🗑
+                      🗑 Supprimer
                     </button>
-
-                    <Link
-                      href={`/properties/${p.id}`}
-                      className="text-blue-600 underline text-sm"
-                    >
-                      Voir
+                    <Link href={`/properties/${p.id}`} style={{
+                      background: "#eff6ff", color: "#2563eb", padding: "8px 14px",
+                      borderRadius: "8px", fontSize: "13px", fontWeight: 500, textDecoration: "none",
+                    }}>
+                      📂 Voir le détail
                     </Link>
                   </div>
                 </div>
