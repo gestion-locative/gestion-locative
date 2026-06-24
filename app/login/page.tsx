@@ -1,7 +1,6 @@
 "use client";
-console.log("DASHBOARD CHARGÉ");
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -9,14 +8,11 @@ import toast from "react-hot-toast";
 import { Bricolage_Grotesque, Manrope, Space_Mono } from "next/font/google";
 import Link from "next/link";
 
-
 const bricolage = Bricolage_Grotesque({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-bricolage" });
 const manrope = Manrope({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-manrope" });
 const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-mono" });
 
 type View = "login" | "signup" | "forgot" | "confirm";
-
-/* ---------- UI partagée ---------- */
 
 const inputClass =
   "w-full rounded-xl border-2 border-[#e6d6bb] bg-[#fdf8ef] px-4 py-3 text-[15px] text-[#1a1208] placeholder:text-[#a89372] outline-none transition focus:border-[#1a1208]";
@@ -44,7 +40,6 @@ function AuthShell({
     <div
       className={`${bricolage.variable} ${manrope.variable} ${spaceMono.variable} relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fbf1e3] px-6 py-12 font-[family-name:var(--font-manrope)]`}
     >
-      {/* SOLEIL */}
       <div className="pointer-events-none absolute -right-24 -top-28 h-[380px] w-[380px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#ffd166,#f9a826_60%,#f4801f)] opacity-90" />
 
       <div className="relative w-full max-w-md">
@@ -65,18 +60,16 @@ function AuthShell({
         </div>
       </div>
 
-      {/* RETOUR */}
       <Link href="/" className="absolute top-6 left-6 text-sm font-semibold text-[#7a684f] hover:underline transition z-10">
         ← Accueil
       </Link>
-
     </div>
   );
 }
 
-/* ---------- Page ---------- */
+/* ---------- Contenu de la page (séparé pour Suspense) ---------- */
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -94,10 +87,7 @@ export default function LoginPage() {
 
   async function signIn() {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
 
     if (!error) {
@@ -117,10 +107,7 @@ export default function LoginPage() {
 
   async function signUp() {
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
 
     if (error) {
@@ -154,7 +141,6 @@ export default function LoginPage() {
     }
   }
 
-  // ➜ Vue : email de confirmation envoyé
   if (view === "confirm") {
     return (
       <AuthShell
@@ -172,7 +158,6 @@ export default function LoginPage() {
     );
   }
 
-  // ➜ Vue : mot de passe oublié
   if (view === "forgot") {
     return (
       <AuthShell
@@ -189,13 +174,10 @@ export default function LoginPage() {
         <button onClick={sendResetEmail} disabled={loading} className={primaryBtn}>
           {loading ? "Envoi..." : "Envoyer le lien"}
         </button>
-        
-
       </AuthShell>
     );
   }
 
-  // ➜ Vue : inscription
   if (view === "signup") {
     return (
       <AuthShell eyebrow="Gestion locative · sans effort" title="Créer un compte">
@@ -216,7 +198,6 @@ export default function LoginPage() {
     );
   }
 
-// ➜ Vue : connexion (par défaut)
   return (
     <div className={`${bricolage.variable} ${manrope.variable} ${spaceMono.variable} relative min-h-screen bg-[#fbf1e3] font-[family-name:var(--font-manrope)]`}>
       <AuthShell eyebrow="Content de vous revoir" title="Connexion">
@@ -247,5 +228,15 @@ export default function LoginPage() {
         </button>
       </AuthShell>
     </div>
+  );
+}
+
+/* ---------- Export default avec Suspense ---------- */
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }
