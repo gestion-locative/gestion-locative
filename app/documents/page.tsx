@@ -6,6 +6,27 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
+/* ------------------------------------------------------------------
+   Relances & Quittances Loya — thème solaire, styles 100% en ligne.
+   Toute la logique (onglets, relances, quittances) est identique.
+------------------------------------------------------------------- */
+
+const INK = "#1a1208";
+const CREAM = "#fbf1e3";
+const ORANGE = "#e8590c";
+const BROWN = "#b45309";
+const MUTE = "#a89372";
+const BORDER = "#efe3cd";
+const FIELD_BORDER = "#e6d6bb";
+const GREEN = "#1f7a37";
+const GREEN_BG = "#e3f3e4";
+const RED = "#b3361f";
+const RED_BG = "#fcece6";
+
+const display = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+const mono = "var(--font-mono), 'Space Mono', ui-monospace, monospace";
+const body = "var(--font-manrope), 'Manrope', system-ui, sans-serif";
+
 function getCurrentMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -178,69 +199,87 @@ export default function DocumentsPage() {
   }
 
   async function deleteReceipt(receipt: any) {
-    // Supprime le fichier dans le storage
     const filePath = receipt.pdf_url.split("/receipts/")[1];
     await supabase.storage.from("receipts").remove([filePath]);
 
-    // Supprime la ligne dans la table
     const { error } = await supabase
-        .from("receipts")
-        .delete()
-        .eq("id", receipt.id);
+      .from("receipts")
+      .delete()
+      .eq("id", receipt.id);
 
     if (!error) {
-        toast.success("Quittance supprimée.");
-        await fetchReceipts();
+      toast.success("Quittance supprimée.");
+      await fetchReceipts();
     } else {
-        toast.error("Impossible de supprimer la quittance.");
+      toast.error("Impossible de supprimer la quittance.");
     }
-    }
+  }
 
   const unpaidTenants = tenants.filter((t) => !payments[t.id]?.is_paid);
 
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "12px 6px", marginBottom: -1, fontSize: 14, fontWeight: 700, fontFamily: body,
+    background: "none", border: "none", cursor: "pointer",
+    borderBottom: `3px solid ${active ? ORANGE : "transparent"}`,
+    color: active ? INK : MUTE,
+  });
+
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-10">
-      <div className="max-w-3xl mx-auto">
+    <main style={{ minHeight: "100vh", background: CREAM, padding: 24, fontFamily: body, position: "relative", overflow: "hidden" }}>
+      {/* SOLEIL décoratif */}
+      <div
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          right: -120,
+          top: -140,
+          width: 340,
+          height: 340,
+          borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+          opacity: 0.8,
+        }}
+      />
+
+      <div style={{ position: "relative", maxWidth: 760, margin: "0 auto" }}>
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 transition mb-6"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "#fff", border: `2px solid ${FIELD_BORDER}`,
+            padding: "9px 16px", borderRadius: 999,
+            fontSize: 14, fontWeight: 700, color: INK, textDecoration: "none",
+            marginBottom: 20,
+          }}
         >
           ← Accueil
         </Link>
 
-        <h1 className="text-3xl font-bold mb-2">📋 Relances & Quittances</h1>
-        <p className="text-sm text-gray-500 mb-6">Gérez vos relances et quittances en un seul endroit.</p>
+        <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>
+          Gestion locative
+        </p>
+        <h1 style={{ fontFamily: display, fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 4 }}>
+          📋 Relances &amp; Quittances
+        </h1>
+        <p style={{ fontSize: 14, color: "#7a684f", marginBottom: 24 }}>Gérez vos relances et quittances en un seul endroit.</p>
 
         {/* ONGLETS */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("relances")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "relances"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
+        <div style={{ display: "flex", gap: 20, marginBottom: 24, borderBottom: `1px solid ${FIELD_BORDER}` }}>
+          <button onClick={() => setActiveTab("relances")} style={tabStyle(activeTab === "relances")}>
             🔔 Relances
             {unpaidTenants.length > 0 && (
-              <span className="ml-2 bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
+              <span style={{ background: RED_BG, color: RED, fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
                 {unpaidTenants.length}
               </span>
             )}
           </button>
 
-          <button
-            onClick={() => setActiveTab("quittances")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-              activeTab === "quittances"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
+          <button onClick={() => setActiveTab("quittances")} style={tabStyle(activeTab === "quittances")}>
             📄 Quittances
             {receipts.length > 0 && (
-              <span className="ml-2 bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
+              <span style={{ background: CREAM, color: "#7a684f", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
                 {receipts.length}
               </span>
             )}
@@ -251,64 +290,69 @@ export default function DocumentsPage() {
         {activeTab === "relances" && (
           <div>
             {unpaidTenants.length === 0 ? (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                <p className="text-green-700 font-medium">🎉 Tous les loyers sont payés ce mois-ci !</p>
+              <div style={{ background: GREEN_BG, border: `1px solid #c3e6c8`, borderRadius: 16, padding: 24, textAlign: "center" }}>
+                <p style={{ color: GREEN, fontWeight: 700, fontFamily: display, fontSize: 16 }}>🎉 Tous les loyers sont payés ce mois-ci !</p>
               </div>
             ) : (
               <>
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-sm text-gray-500">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+                  <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600 }}>
                     {unpaidTenants.length} locataire{unpaidTenants.length > 1 ? "s" : ""} en attente ce mois
                   </p>
                   <button
                     onClick={sendAllReminders}
-                    className="bg-red-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                    style={{
+                      background: INK, color: CREAM, fontSize: 14, fontWeight: 700, fontFamily: body,
+                      padding: "11px 20px", borderRadius: 999, border: "none", cursor: "pointer",
+                      boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)",
+                    }}
                   >
                     Relancer tous ({unpaidTenants.length})
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {unpaidTenants.map((t) => {
                     const daysLate = getDaysLate(t);
                     return (
                       <div
                         key={t.id}
-                        className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 flex justify-between items-center"
+                        style={{ background: "#fff", borderRadius: 16, border: `1px solid ${BORDER}`, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}
                       >
                         <div>
-                            <p className="font-semibold text-gray-900">{t.name}</p>
-                            <p className="text-sm text-gray-500">{t.email}</p>
-                            <div className="flex gap-2 mt-1 flex-wrap">
-                                <span className="text-xs font-medium text-gray-700">{t.rent} €</span>
-                                {daysLate > 0 && (
-                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                                    Retard {daysLate}j
-                                </span>
-                                )}
-                                {t.auto_reminder_enabled && t.reminder_days?.length > 0 ? (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                    🔁 Auto : {t.reminder_days.map((d: number) => d === 0 ? "J" : `J+${d}`).join(", ")}
-                                </span>
-                                ) : (
-                                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                                    Pas de relance auto
-                                </span>
-                                )}
-                            </div>
-                            </div>
+                          <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK }}>{t.name}</p>
+                          <p style={{ fontSize: 13, color: "#7a684f", marginTop: 2 }}>{t.email}</p>
+                          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <span style={{ fontFamily: display, fontSize: 13, fontWeight: 800, color: INK }}>{t.rent} €</span>
+                            {daysLate > 0 && (
+                              <span style={{ fontSize: 12, fontWeight: 700, background: RED_BG, color: RED, padding: "3px 10px", borderRadius: 999 }}>
+                                Retard {daysLate}j
+                              </span>
+                            )}
+                            {t.auto_reminder_enabled && t.reminder_days?.length > 0 ? (
+                              <span style={{ fontSize: 12, fontWeight: 700, background: CREAM, color: BROWN, padding: "3px 10px", borderRadius: 999 }}>
+                                🌞 Auto : {t.reminder_days.map((d: number) => d === 0 ? "J" : `J+${d}`).join(", ")}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 12, fontWeight: 700, background: "#f1ece2", color: MUTE, padding: "3px 10px", borderRadius: 999 }}>
+                                Pas de relance auto
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                        <div className="flex items-center gap-6">
-                          <Link
-                            href={`/tenants/${t.id}`}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
+                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                          <Link href={`/tenants/${t.id}`} style={{ fontSize: 13, fontWeight: 600, color: BROWN, textDecoration: "underline" }}>
                             Voir
                           </Link>
                           <button
                             onClick={() => sendReminder(t)}
                             disabled={loadingEmailId === t.id}
-                            className="bg-red-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                            style={{
+                              background: INK, color: CREAM, fontSize: 14, fontWeight: 700, fontFamily: body,
+                              padding: "9px 16px", borderRadius: 999, border: "none", cursor: "pointer",
+                              opacity: loadingEmailId === t.id ? 0.5 : 1,
+                            }}
                           >
                             {loadingEmailId === t.id ? "Envoi..." : "Relancer"}
                           </button>
@@ -326,47 +370,48 @@ export default function DocumentsPage() {
         {activeTab === "quittances" && (
           <div>
             {receipts.length === 0 ? (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
-                <p className="text-gray-500">Aucune quittance générée pour le moment.</p>
-                <p className="text-xs text-gray-400 mt-1">Les quittances sont générées automatiquement quand un loyer est marqué payé.</p>
+              <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
+                <p style={{ color: "#7a684f", fontWeight: 600 }}>Aucune quittance générée pour le moment.</p>
+                <p style={{ fontSize: 12.5, color: MUTE, marginTop: 6, lineHeight: 1.5 }}>Les quittances sont générées automatiquement quand un loyer est marqué payé.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {receipts.map((r) => (
                   <div
                     key={r.id}
-                    className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 flex justify-between items-center"
+                    style={{ background: "#fff", borderRadius: 16, border: `1px solid ${BORDER}`, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}
                   >
                     <div>
-                      <p className="font-semibold text-gray-900">{r.tenants?.name}</p>
-                      <p className="text-sm text-gray-500 capitalize">{formatMonth(r.month)}</p>
+                      <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK }}>{r.tenants?.name}</p>
+                      <p style={{ fontSize: 13, color: "#7a684f", textTransform: "capitalize", marginTop: 2 }}>{formatMonth(r.month)}</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <a
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <a
                         href={r.pdf_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
+                        style={{ fontSize: 13, fontWeight: 600, color: BROWN, textDecoration: "underline" }}
                       >
                         Télécharger
                       </a>
                       <button
                         onClick={() => sendReceipt(r)}
                         disabled={loadingReceiptId === r.id}
-                        className="bg-gray-800 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-gray-900 transition disabled:opacity-50"
+                        style={{
+                          background: INK, color: CREAM, fontSize: 14, fontWeight: 700, fontFamily: body,
+                          padding: "9px 16px", borderRadius: 999, border: "none", cursor: "pointer",
+                          opacity: loadingReceiptId === r.id ? 0.5 : 1,
+                        }}
                       >
                         {loadingReceiptId === r.id ? "Envoi..." : "Envoyer"}
                       </button>
-
-                    <button
+                      <button
                         onClick={() => deleteReceipt(r)}
-                        className="text-red-500 hover:underline text-xs"
-                    >
+                        style={{ background: "none", border: "none", color: RED, textDecoration: "underline", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: body }}
+                      >
                         Supprimer
-                    </button>
-
-
+                      </button>
                     </div>
                   </div>
                 ))}

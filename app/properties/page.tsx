@@ -6,6 +6,40 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
+/* ------------------------------------------------------------------
+   Biens Loya — thème solaire, styles 100% en ligne (aucune dépendance
+   Tailwind). Toute la logique est identique à l'original.
+------------------------------------------------------------------- */
+
+const INK = "#1a1208";
+const CREAM = "#fbf1e3";
+const BROWN = "#b45309";
+const MUTE = "#a89372";
+const BORDER = "#efe3cd";
+const FIELD_BORDER = "#e6d6bb";
+const FIELD_BG = "#fdf8ef";
+const GREEN = "#1f7a37";
+const GREEN_BG = "#e3f3e4";
+const RED = "#b3361f";
+const RED_BG = "#fcece6";
+
+const display = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+const mono = "var(--font-mono), 'Space Mono', ui-monospace, monospace";
+const body = "var(--font-manrope), 'Manrope', system-ui, sans-serif";
+
+const fieldStyle: React.CSSProperties = {
+  border: `2px solid ${FIELD_BORDER}`,
+  background: FIELD_BG,
+  padding: "11px 14px",
+  width: "100%",
+  borderRadius: 12,
+  fontSize: 14,
+  color: INK,
+  fontFamily: body,
+  outline: "none",
+  boxSizing: "border-box",
+};
+
 const PROPERTY_TYPES = [
   "Appartement",
   "Maison",
@@ -129,53 +163,62 @@ export default function PropertiesPage() {
   );
 
   return (
-    <main style={{ minHeight: "100vh", background: "#f9fafb", padding: "16px", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+    <main style={{ minHeight: "100vh", background: CREAM, padding: 16, fontFamily: body, position: "relative", overflow: "hidden" }}>
+      {/* SOLEIL décoratif */}
+      <div
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          right: -120,
+          top: -140,
+          width: 340,
+          height: 340,
+          borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+          opacity: 0.8,
+        }}
+      />
+
+      <div style={{ position: "relative", maxWidth: 680, margin: "0 auto" }}>
 
         {/* RETOUR */}
-        <div style={{ marginBottom: "20px" }}>
+        <div style={{ marginBottom: 20 }}>
           <Link href="/dashboard" style={{
-            display: "inline-flex", alignItems: "center", gap: "6px",
-            background: "#fff", border: "1px solid #e5e7eb",
-            padding: "8px 14px", borderRadius: "10px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-            fontSize: "14px", color: "#374151", textDecoration: "none",
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "#fff", border: `2px solid ${FIELD_BORDER}`,
+            padding: "9px 16px", borderRadius: 999,
+            fontSize: 14, fontWeight: 700, color: INK, textDecoration: "none",
           }}>
             ← Accueil
           </Link>
         </div>
 
         {/* TITRE */}
-        <h1 style={{ fontSize: "26px", fontWeight: 700, marginBottom: "16px" }}>🏠 Mes biens</h1>
+        <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>
+          Gestion locative
+        </p>
+        <h1 style={{ fontFamily: display, fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 18 }}>
+          🏠 Mes biens
+        </h1>
 
         {/* RECHERCHE */}
         <input
-          style={{
-            border: "1px solid #d1d5db", padding: "10px 14px", width: "100%",
-            borderRadius: "10px", marginBottom: "16px", fontSize: "14px", boxSizing: "border-box",
-          }}
+          style={{ ...fieldStyle, marginBottom: 16, fontSize: 15 }}
           placeholder="🔍 Rechercher par adresse ou ville..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* STATS — auto-fill : 1 col sur très petit, 3 col sur grand */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-          gap: "10px", marginBottom: "20px",
-        }}>
+        {/* STATS (discret, second plan) */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 24, paddingBottom: 18, marginBottom: 18, borderBottom: `1px solid ${FIELD_BORDER}` }}>
           {[
-            { label: "Total biens", value: totalProperties, color: "#111827" },
-            { label: "Occupés", value: occupiedCount, color: "#16a34a" },
-            { label: "Vacants", value: vacantCount, color: "#dc2626" },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{
-              background: "#fff", borderRadius: "12px", padding: "14px 16px",
-              border: "1px solid #f3f4f6", boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-            }}>
-              <p style={{ fontSize: "12px", color: "#6b7280", margin: "0 0 4px" }}>{label}</p>
-              <p style={{ fontSize: "22px", fontWeight: 700, color, margin: 0 }}>{value}</p>
+            { label: "Total biens", value: totalProperties },
+            { label: "Occupés", value: occupiedCount },
+            { label: "Vacants", value: vacantCount },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: MUTE, marginBottom: 3 }}>{label}</p>
+              <p style={{ fontFamily: display, fontSize: 17, fontWeight: 700, color: "#5c4a2e", margin: 0 }}>{value}</p>
             </div>
           ))}
         </div>
@@ -184,81 +227,80 @@ export default function PropertiesPage() {
         <button
           onClick={() => setShowForm(!showForm)}
           style={{
-            background: "#2563eb", color: "#fff", padding: "12px 20px",
-            borderRadius: "10px", border: "none", cursor: "pointer",
-            fontSize: "15px", fontWeight: 600, width: "100%", marginBottom: "16px",
+            background: INK, color: CREAM, padding: "14px 20px",
+            borderRadius: 999, border: "none", cursor: "pointer",
+            fontSize: 15, fontWeight: 700, fontFamily: body, width: "100%", marginBottom: 16,
+            boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)",
           }}
         >
-          + Ajouter un bien
+          {showForm ? "Fermer" : "+ Ajouter un bien"}
         </button>
 
         {/* FORMULAIRE */}
         {showForm && (
-          <div style={{
-            background: "#fff", padding: "20px", borderRadius: "14px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: "20px",
-          }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "14px" }}>
+          <div style={{ background: "#fff", padding: 22, borderRadius: 20, border: `1px solid ${BORDER}`, boxShadow: "0 18px 40px -28px rgba(120,53,15,0.4)", marginBottom: 20 }}>
+            <h2 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 16 }}>
               {editingId ? "Modifier le bien" : "Nouveau bien"}
             </h2>
 
-            <input
-              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "10px", fontSize: "14px", boxSizing: "border-box" }}
-              placeholder="Adresse"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-
-            {/* Code postal + Ville — s'empilent sur très petit écran */}
-            <div style={{ display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <input
-                style={{ border: "1px solid #d1d5db", padding: "10px 12px", borderRadius: "8px", fontSize: "14px", flex: "1 1 100px", minWidth: "80px", boxSizing: "border-box" }}
-                placeholder="Code postal"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
+                style={fieldStyle}
+                placeholder="Adresse"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
               />
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <input
+                  style={{ ...fieldStyle, flex: "1 1 100px", minWidth: 80, width: "auto" }}
+                  placeholder="Code postal"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                />
+                <input
+                  style={{ ...fieldStyle, flex: "2 1 160px", minWidth: 120, width: "auto" }}
+                  placeholder="Ville"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+              </div>
+
+              <select
+                style={fieldStyle}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
+                {PROPERTY_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+
               <input
-                style={{ border: "1px solid #d1d5db", padding: "10px 12px", borderRadius: "8px", fontSize: "14px", flex: "2 1 160px", minWidth: "120px", boxSizing: "border-box" }}
-                placeholder="Ville"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
+                style={fieldStyle}
+                placeholder="Surface (m²)"
+                type="number"
+                value={surface}
+                onChange={(e) => setSurface(e.target.value)}
+              />
+
+              <textarea
+                style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }}
+                placeholder="Description (optionnel)"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
-            <select
-              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "10px", fontSize: "14px", color: "#374151", background: "#fff", boxSizing: "border-box" }}
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              {PROPERTY_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-
-            <input
-              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "10px", fontSize: "14px", boxSizing: "border-box" }}
-              placeholder="Surface (m²)"
-              type="number"
-              value={surface}
-              onChange={(e) => setSurface(e.target.value)}
-            />
-
-            <textarea
-              style={{ border: "1px solid #d1d5db", padding: "10px 12px", width: "100%", borderRadius: "8px", marginBottom: "16px", fontSize: "14px", boxSizing: "border-box", resize: "vertical" }}
-              placeholder="Description (optionnel)"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button
                 onClick={editingId ? updateProperty : addProperty}
                 disabled={loading}
                 style={{
-                  background: "#16a34a", color: "#fff", padding: "10px 20px",
-                  borderRadius: "8px", border: "none", cursor: "pointer",
-                  fontSize: "14px", fontWeight: 600, flex: 1,
+                  background: INK, color: CREAM, padding: "12px 20px",
+                  borderRadius: 999, border: "none", cursor: "pointer",
+                  fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1,
                   opacity: loading ? 0.5 : 1,
                 }}
               >
@@ -267,9 +309,9 @@ export default function PropertiesPage() {
               <button
                 onClick={resetForm}
                 style={{
-                  background: "#f3f4f6", color: "#374151", padding: "10px 20px",
-                  borderRadius: "8px", border: "none", cursor: "pointer",
-                  fontSize: "14px", flex: 1,
+                  background: "transparent", color: INK, padding: "12px 20px",
+                  borderRadius: 999, border: `2px solid ${INK}`, cursor: "pointer",
+                  fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1,
                 }}
               >
                 Annuler
@@ -279,9 +321,9 @@ export default function PropertiesPage() {
         )}
 
         {/* LISTE DES BIENS */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filteredProperties.length === 0 ? (
-            <p style={{ fontSize: "13px", color: "#9ca3af" }}>
+            <p style={{ fontSize: 14, color: MUTE }}>
               {search ? "Aucun bien trouvé." : "Aucun bien pour le moment."}
             </p>
           ) : (
@@ -291,41 +333,38 @@ export default function PropertiesPage() {
               const isVacant = propertyTenants.length === 0;
 
               return (
-                <div key={p.id} style={{
-                  background: "#fff", borderRadius: "12px", padding: "14px 16px",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                }}>
+                <div key={p.id} style={{ background: "#fff", borderRadius: 16, padding: "16px 18px", border: `1px solid ${BORDER}` }}>
                   {/* Ligne 1 : adresse + badge */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", marginBottom: "4px" }}>
-                    <p style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>{p.address}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+                    <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK, margin: 0 }}>{p.address}</p>
                     <span style={{
                       flexShrink: 0,
-                      padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
-                      background: isVacant ? "#fee2e2" : "#dcfce7",
-                      color: isVacant ? "#dc2626" : "#16a34a",
+                      padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                      background: isVacant ? RED_BG : GREEN_BG,
+                      color: isVacant ? RED : GREEN,
                     }}>
                       {isVacant ? "🔴 Vacant" : `🟢 ${propertyTenants.length} loc.`}
                     </span>
                   </div>
 
                   {/* Ligne 2 : ville + type */}
-                  <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 2px" }}>{p.postal_code} {p.city}</p>
-                  <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>
+                  <p style={{ fontSize: 13, color: "#7a684f", margin: "0 0 2px" }}>{p.postal_code} {p.city}</p>
+                  <p style={{ fontSize: 13, color: MUTE, margin: "0 0 8px" }}>
                     {p.type}{p.surface ? ` · ${p.surface} m²` : ""}
                   </p>
 
                   {/* Ligne 3 : loyer */}
                   {totalRent > 0 && (
-                    <p style={{ fontSize: "14px", fontWeight: 700, color: "#374151", margin: "0 0 10px" }}>{totalRent} €/mois</p>
+                    <p style={{ fontFamily: display, fontSize: 15, fontWeight: 800, color: INK, margin: "0 0 10px" }}>{totalRent} €/mois</p>
                   )}
 
                   {/* Ligne 4 : actions */}
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                       onClick={() => startEdit(p)}
                       style={{
-                        background: "#f59e0b", color: "#fff", padding: "8px 14px",
-                        borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
+                        background: CREAM, color: BROWN, padding: "8px 14px",
+                        borderRadius: 999, border: `1px solid ${FIELD_BORDER}`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body,
                       }}
                     >
                       ✏️ Modifier
@@ -333,15 +372,15 @@ export default function PropertiesPage() {
                     <button
                       onClick={() => deleteProperty(p.id)}
                       style={{
-                        background: "#ef4444", color: "#fff", padding: "8px 14px",
-                        borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
+                        background: RED_BG, color: RED, padding: "8px 14px",
+                        borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body,
                       }}
                     >
                       🗑 Supprimer
                     </button>
                     <Link href={`/properties/${p.id}`} style={{
-                      background: "#eff6ff", color: "#2563eb", padding: "8px 14px",
-                      borderRadius: "8px", fontSize: "13px", fontWeight: 500, textDecoration: "none",
+                      background: INK, color: CREAM, padding: "8px 14px",
+                      borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none",
                     }}>
                       📂 Voir le détail
                     </Link>

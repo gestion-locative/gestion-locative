@@ -2,6 +2,22 @@
 
 import Link from "next/link";
 
+/* ------------------------------------------------------------------
+   Guide d'utilisation Loya — thème solaire, styles 100% en ligne.
+   Tout le contenu (sections, résumé, sommaire, footer) est identique.
+------------------------------------------------------------------- */
+
+const INK = "#1a1208";
+const CREAM = "#fbf1e3";
+const BROWN = "#b45309";
+const MUTE = "#a89372";
+const BORDER = "#efe3cd";
+const FIELD_BORDER = "#e6d6bb";
+
+const display = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+const mono = "var(--font-mono), 'Space Mono', ui-monospace, monospace";
+const body = "var(--font-manrope), 'Manrope', system-ui, sans-serif";
+
 const sections = [
   {
     id: "profil",
@@ -14,7 +30,7 @@ const sections = [
       "Choisissez votre genre (homme/femme) pour adapter automatiquement la formulation des quittances",
       "Optionnel : ajoutez une image de votre signature — elle sera intégrée dans vos quittances PDF",
       "Un modèle d'email professionnel est déjà configuré par défaut pour vos relances et quittances — vous pouvez le personnaliser à votre guise grâce aux variables {nom_locataire}, {loyer}, {mois}, {nom_proprietaire} qui seront automatiquement remplacées par les vraies valeurs à l'envoi",
-      "Cliquez sur **Enregistrer** (le bouton devient bleu dès qu'une modification est détectée)",
+      "Cliquez sur **Enregistrer** (le bouton se met en avant dès qu'une modification est détectée)",
     ],
   },
   {
@@ -67,7 +83,6 @@ const sections = [
       "Pour chaque quittance : **Télécharger** pour ouvrir le PDF, **Envoyer** pour l'envoyer par email directement au locataire, ou **Supprimer** si besoin",
       "Elles contiennent automatiquement toutes les informations légales : vos coordonnées propriétaire, les infos du locataire, le montant, la période concernée et votre signature",
       "Depuis la page **Relances & Quittances** (onglet Quittances), retrouvez l'historique complet de toutes vos quittances classées du plus récent au plus ancien",
-      
     ],
   },
   {
@@ -93,148 +108,148 @@ const sections = [
       "Depuis la fiche d'un bien, vous pouvez **rattacher** ou retirer des locataires, et voir en un coup d'œil le loyer total du bien et le statut de paiement de chaque locataire ce mois-ci",
       "Un bien peut accueillir **plusieurs locataires** — pratique si vous gérez des colocations",
       "Le statut **Vacant / Occupé** se met à jour automatiquement selon le nombre de locataires rattachés au bien",
-      
     ],
   },
 ];
-
-const colorMap: Record<string, string> = {
-  purple: "bg-purple-50 border-purple-200 text-purple-700",
-  green: "bg-green-50 border-green-200 text-green-700",
-  blue: "bg-blue-50 border-blue-200 text-blue-700",
-  amber: "bg-amber-50 border-amber-200 text-amber-700",
-  red: "bg-red-50 border-red-200 text-red-700",
-};
-
-const iconColorMap: Record<string, string> = {
-  purple: "bg-purple-100",
-  green: "bg-green-100",
-  blue: "bg-blue-100",
-  amber: "bg-amber-100",
-  red: "bg-red-100",
-};
 
 function renderStep(step: string) {
   // Gère le **texte en gras**
   const parts = step.split(/\*\*(.*?)\*\*/g);
   return parts.map((part, i) =>
-    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+    i % 2 === 1 ? <strong key={i} style={{ color: INK, fontWeight: 700 }}>{part}</strong> : part
   );
 }
 
+const card: React.CSSProperties = {
+  background: "#fff",
+  borderRadius: 20,
+  border: `1px solid ${BORDER}`,
+  boxShadow: "0 18px 40px -30px rgba(120,53,15,0.4)",
+  padding: 24,
+};
+
 export default function TutorialPage() {
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-10">
-      <div className="max-w-3xl mx-auto">
+    <main style={{ minHeight: "100vh", background: CREAM, padding: 24, fontFamily: body, position: "relative", overflow: "hidden" }}>
+      {/* SOLEIL décoratif */}
+      <div
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          right: -120,
+          top: -140,
+          width: 340,
+          height: 340,
+          borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+          opacity: 0.8,
+        }}
+      />
+
+      <div style={{ position: "relative", maxWidth: 760, margin: "0 auto" }}>
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 transition mb-6"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "#fff", border: `2px solid ${FIELD_BORDER}`,
+            padding: "9px 16px", borderRadius: 999,
+            fontSize: 14, fontWeight: 700, color: INK, textDecoration: "none",
+            marginBottom: 20,
+          }}
         >
           ← Accueil
         </Link>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">📖 Guide d'utilisation</h1>
-        <p className="text-gray-500 text-sm mb-8">
+        <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>
+          Prise en main
+        </p>
+        <h1 style={{ fontFamily: display, fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 4 }}>
+          📖 Guide d'utilisation
+        </h1>
+        <p style={{ fontSize: 14, color: "#7a684f", marginBottom: 28 }}>
           Tout ce qu'il faut savoir pour utiliser Loya efficacement.
         </p>
 
         {/* RÉSUMÉ RAPIDE */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-            <h2 className="text-sm font-semibold text-blue-700 mb-1">⚡ En bref — les 5 choses essentielles</h2>
-            <p className="text-xs text-blue-400 mb-3">Pour les flemmards qui ne liront pas le reste (on vous a vus 👀)</p>
-            <ol className="space-y-2">
-                <li className="flex items-start gap-2 text-sm text-blue-700">
-                <span className="font-bold flex-shrink-0">1.</span>
-                <span>Remplissez votre <strong>profil</strong> (nom, adresse, signature) — ces infos apparaîtront sur vos quittances</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-blue-700">
-                <span className="font-bold flex-shrink-0">2.</span>
-                <span>Ajoutez vos <strong>locataires</strong> avec leur email, loyer et date d'échéance</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-blue-700">
-                <span className="font-bold flex-shrink-0">3.</span>
-                <span>Marquez les loyers comme <strong>payés</strong> chaque mois — une quittance PDF est générée automatiquement</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-blue-700">
-                <span className="font-bold flex-shrink-0">4.</span>
-                <span>Envoyez des <strong>relances</strong> manuellement ou activez les relances automatiques par locataire</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-blue-700">
-                <span className="font-bold flex-shrink-0">5.</span>
-                <span>Retrouvez toutes vos <strong>quittances</strong> et relances dans la page Relances & Quittances</span>
-                </li>
-            </ol>
-            </div>
+        <div style={{ background: "linear-gradient(160deg, #ffeccb, #ffdca8)", border: "1px solid #f3cd9a", borderRadius: 20, padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontFamily: display, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 2 }}>⚡ En bref — les 5 choses essentielles</h2>
+          <p style={{ fontSize: 12.5, color: BROWN, marginBottom: 16 }}>Pour les flemmards qui ne liront pas le reste (on vous a vus 👀)</p>
+          <ol style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
+            {[
+              <>Remplissez votre <strong style={{ color: INK }}>profil</strong> (nom, adresse, signature) — ces infos apparaîtront sur vos quittances</>,
+              <>Ajoutez vos <strong style={{ color: INK }}>locataires</strong> avec leur email, loyer et date d'échéance</>,
+              <>Marquez les loyers comme <strong style={{ color: INK }}>payés</strong> chaque mois — une quittance PDF est générée automatiquement</>,
+              <>Envoyez des <strong style={{ color: INK }}>relances</strong> manuellement ou activez les relances automatiques par locataire</>,
+              <>Retrouvez toutes vos <strong style={{ color: INK }}>quittances</strong> et relances dans la page Relances & Quittances</>,
+            ].map((txt, i) => (
+              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#5c4a2e", lineHeight: 1.5 }}>
+                <span style={{ fontFamily: display, fontWeight: 800, color: BROWN, flexShrink: 0 }}>{i + 1}.</span>
+                <span>{txt}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
 
         {/* SOMMAIRE */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-8">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Sommaire</h2>
-            <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-2">
-                {sections.slice(0, 4).map((s) => (
-                    <a
-                    key={s.id}
-                    href={`#${s.id}`}
-                    className="text-sm text-gray-600 hover:text-blue-600 hover:underline flex items-center gap-2"
-                    >
-                    <span>{s.emoji}</span>
-                    <span>{s.title}</span>
-                    </a>
-                ))}
-                </div>
-                <div className="flex flex-col gap-2">
-                {sections.slice(4).map((s) => (
-                    <a
-                    key={s.id}
-                    href={`#${s.id}`}
-                    className="text-sm text-gray-600 hover:text-blue-600 hover:underline flex items-center gap-2"
-                    >
-                    <span>{s.emoji}</span>
-                    <span>{s.title}</span>
-                    </a>
-                ))}
-                </div>
-            </div>
-            </div>
+        <div style={{ ...card, marginBottom: 28 }}>
+          <h2 style={{ fontFamily: display, fontSize: 15, fontWeight: 700, color: INK, marginBottom: 16 }}>Sommaire</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {sections.map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                style={{ fontSize: 14, color: "#5c4a2e", textDecoration: "none", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, transition: "color .15s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#2563eb"; e.currentTarget.style.textDecoration = "underline"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#5c4a2e"; e.currentTarget.style.textDecoration = "none"; }}
+                >
+                <span>{s.emoji}</span>
+                <span>{s.title}</span>
+            </a>
+            ))}
+          </div>
+        </div>
 
         {/* SECTIONS */}
-        <div className="space-y-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {sections.map((s) => (
-            <div
-              key={s.id}
-              id={s.id}
-              className="bg-white rounded-xl border border-gray-100 shadow-sm p-6"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-10 h-10 ${iconColorMap[s.color]} rounded-lg flex items-center justify-center text-xl`}>
+            <div key={s.id} id={s.id} style={card}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 44, height: 44, background: CREAM, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
                   {s.emoji}
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">{s.title}</h2>
+                <h2 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK }}>{s.title}</h2>
               </div>
 
-              <ol className="space-y-3">
+              <ol style={{ display: "flex", flexDirection: "column", gap: 12, listStyle: "none", padding: 0, margin: 0 }}>
                 {s.steps.map((step, i) => (
-                  <li key={i} className="flex gap-3 text-sm text-gray-600">
-                    <span className={`flex-shrink-0 w-5 h-5 ${colorMap[s.color]} border rounded-full flex items-center justify-center text-xs font-medium`}>
+                  <li key={i} style={{ display: "flex", gap: 12, fontSize: 14, color: "#5c4a2e", lineHeight: 1.55 }}>
+                    <span style={{
+                      flexShrink: 0, width: 22, height: 22, background: CREAM, color: BROWN,
+                      border: `1px solid ${FIELD_BORDER}`, borderRadius: 999,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 700,
+                    }}>
                       {i + 1}
                     </span>
                     <span>{renderStep(step)}</span>
                   </li>
                 ))}
               </ol>
-
             </div>
           ))}
         </div>
 
         {/* FOOTER */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-          <p className="text-blue-700 font-medium mb-2">Vous êtes prêt à utiliser Loya ! 🎉</p>
-          <p className="text-blue-600 text-sm mb-4">Commencez par remplir votre profil, puis ajoutez vos biens et locataires.</p>
+        <div style={{ marginTop: 28, background: INK, borderRadius: 20, padding: 28, textAlign: "center" }}>
+          <p style={{ fontFamily: display, color: CREAM, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>Vous êtes prêt à utiliser Loya ! 🎉</p>
+          <p style={{ color: "rgba(251,241,227,0.75)", fontSize: 14, marginBottom: 20 }}>Commencez par remplir votre profil, puis ajoutez vos biens et locataires.</p>
           <Link
             href="/profile"
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
+            style={{
+              display: "inline-block", background: CREAM, color: INK,
+              padding: "13px 26px", borderRadius: 999, fontSize: 15, fontWeight: 700, textDecoration: "none",
+            }}
           >
             Commencer par mon profil →
           </Link>
