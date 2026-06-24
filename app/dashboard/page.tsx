@@ -234,7 +234,7 @@ export default function Home() {
     <main style={{ minHeight: "100vh", background: CREAM, padding: "20px 16px", fontFamily: body }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
 
-        {/* HEADER — s'empile sur mobile */}
+        {/* HEADER */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, marginBottom: 28, flexWrap: "wrap",
@@ -286,7 +286,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* TUILES — 2 colonnes sur mobile, 3 sur grand écran */}
+        {/* TUILES */}
         <p style={{ ...eyebrowStyle, marginBottom: 12 }}>Raccourcis</p>
         <div style={{
           display: "grid",
@@ -320,13 +320,13 @@ export default function Home() {
           ))}
         </div>
 
-        {/* STATISTIQUES — 2 colonnes sur mobile, 4 sur grand écran */}
+        {/* STATISTIQUES */}
         <div style={{ borderTop: "1px solid #e6d6bb", paddingTop: 24 }}>
           <p style={{ ...eyebrowStyle, color: MUTE, marginBottom: 16 }}>Statistiques du mois</p>
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-            gap: 16,
+            gap: 18,
           }}>
             <Stat label="Encaissé" value={`${stats.collectedAmount.toLocaleString("fr-FR")} €`} />
             <Stat label="En attente" value={`${stats.pendingAmount.toLocaleString("fr-FR")} €`} />
@@ -342,8 +342,8 @@ export default function Home() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${BORDER}` }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: MUTE, marginBottom: 4 }}>{label}</p>
+    <div>
+      <p style={{ fontSize: 11, fontWeight: 600, color: MUTE, marginBottom: 3 }}>{label}</p>
       <p style={{ fontFamily: display, fontWeight: 700, fontSize: 17, color: "#5c4a2e" }}>{value}</p>
     </div>
   );
