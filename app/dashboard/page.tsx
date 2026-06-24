@@ -6,14 +6,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { LoyaIcon } from "@/components/LoyaLogo";
 
-/* ------------------------------------------------------------------
-   Dashboard Loya — styles 100% en ligne, AUCUNE dépendance Tailwind.
-   Toute la logique Supabase / stats / navigation est inchangée.
-   La police Bricolage s'applique si --font-bricolage est défini dans
-   ton layout (next/font) ; sinon une police système prend le relais.
-------------------------------------------------------------------- */
-
-// palette
 const INK = "#1a1208";
 const CREAM = "#fbf1e3";
 const ORANGE = "#e8590c";
@@ -39,7 +31,7 @@ const cardStyle: React.CSSProperties = {
   border: `1px solid ${BORDER}`,
   background: "#fff",
   borderRadius: 16,
-  padding: 24,
+  padding: 20,
   textDecoration: "none",
 };
 
@@ -57,9 +49,9 @@ const chipStyle: React.CSSProperties = {
 const tileTitle: React.CSSProperties = {
   fontFamily: display,
   fontWeight: 700,
-  fontSize: 18,
+  fontSize: 17,
   color: INK,
-  marginTop: 16,
+  marginTop: 14,
 };
 
 const tileSub: React.CSSProperties = {
@@ -103,10 +95,7 @@ export default function Home() {
 
   async function checkUser() {
     const { data } = await supabase.auth.getUser();
-    if (!data.user) {
-      setLoading(false);
-      return;
-    }
+    if (!data.user) { setLoading(false); return; }
     setUser(data.user);
     await fetchStats(data.user.id);
     await fetchOwnerName(data.user.id);
@@ -133,24 +122,18 @@ export default function Home() {
 
     const { data: tenants } = await supabase.from("tenants").select("*").eq("user_id", userId);
     const { data: properties } = await supabase.from("properties").select("*").eq("user_id", userId);
-
     const { data: payments } = await supabase
-      .from("payments")
-      .select("*")
+      .from("payments").select("*")
       .in("tenant_id", (tenants || []).map((t) => t.id))
       .eq("month", monthKey);
 
     const paymentMap: Record<string, any> = {};
-    (payments || []).forEach((p) => {
-      paymentMap[p.tenant_id] = p;
-    });
+    (payments || []).forEach((p) => { paymentMap[p.tenant_id] = p; });
 
     const paidTenants = (tenants || []).filter((t) => paymentMap[t.id]?.is_paid);
     const pendingTenants = (tenants || []).filter((t) => !paymentMap[t.id]?.is_paid);
-
     const collectedAmount = paidTenants.reduce((sum, t) => sum + (Number(t.rent) || 0), 0);
     const pendingAmount = pendingTenants.reduce((sum, t) => sum + (Number(t.rent) || 0), 0);
-
     const lateTenants = (tenants || []).filter((t) => {
       if (!t.rent_due_day || paymentMap[t.id]?.is_paid) return false;
       return today > Number(t.rent_due_day);
@@ -176,16 +159,7 @@ export default function Home() {
   /* ---------- CHARGEMENT ---------- */
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: CREAM,
-          fontFamily: body,
-        }}
-      >
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: CREAM, fontFamily: body }}>
         <p style={{ fontFamily: mono, fontSize: 14, color: MUTE }}>Chargement…</p>
       </div>
     );
@@ -194,87 +168,47 @@ export default function Home() {
   /* ---------- NON CONNECTÉ : landing ---------- */
   if (!user) {
     return (
-      <main
-        style={{
-          position: "relative",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          background: CREAM,
-          padding: "48px 24px",
-          textAlign: "center",
-          fontFamily: body,
-        }}
-      >
-        <div
-          style={{
-            pointerEvents: "none",
-            position: "absolute",
-            right: -96,
-            top: -112,
-            width: 380,
-            height: 380,
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
-            opacity: 0.9,
-          }}
-        />
+      <main style={{
+        position: "relative", minHeight: "100vh", display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", overflow: "hidden",
+        background: CREAM, padding: "48px 24px", textAlign: "center", fontFamily: body,
+      }}>
+        <div style={{
+          pointerEvents: "none", position: "absolute", right: -96, top: -112,
+          width: 380, height: 380, borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
+          opacity: 0.9,
+        }} />
         <div style={{ position: "relative", maxWidth: 560, margin: "0 auto" }}>
           <div style={{ marginBottom: 28, display: "flex", justifyContent: "center" }}>
             <LoyaIcon size={64} />
           </div>
           <p style={{ ...eyebrowStyle, marginBottom: 16 }}>Gestion locative · sans effort</p>
-          <h1
-            style={{
-              fontFamily: display,
-              fontWeight: 800,
-              fontSize: 48,
-              lineHeight: 1.05,
-              letterSpacing: "-0.025em",
-              color: INK,
-              marginBottom: 20,
-            }}
-          >
+          <h1 style={{
+            fontFamily: display, fontWeight: 800, fontSize: "clamp(32px, 6vw, 48px)",
+            lineHeight: 1.05, letterSpacing: "-0.025em", color: INK, marginBottom: 20,
+          }}>
             Envoyez vos relances et quittances <span style={{ color: ORANGE }}>en un clic</span>, ou laissez
             l&apos;appli le faire <em style={{ fontStyle: "italic", color: ORANGE }}>automatiquement</em>.
           </h1>
-          <p style={{ fontSize: 22, fontWeight: 800, color: INK, marginBottom: 8 }}>
+          <p style={{ fontSize: 20, fontWeight: 800, color: INK, marginBottom: 8 }}>
             Simple à prendre en main, <span style={{ color: ORANGE }}>puissant</span> au quotidien.
           </p>
-          <p style={{ fontSize: 16, fontWeight: 600, color: BROWN, marginBottom: 40 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: BROWN, marginBottom: 40 }}>
             Vous, vous pouvez retourner bronzer. 🌞
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link
-              href="/login"
-              style={{
-                background: INK,
-                color: CREAM,
-                padding: "16px 36px",
-                borderRadius: 999,
-                fontWeight: 700,
-                fontSize: 16,
-                textDecoration: "none",
-              }}
-            >
+            <Link href="/login" style={{
+              background: INK, color: CREAM, padding: "16px 36px",
+              borderRadius: 999, fontWeight: 700, fontSize: 16, textDecoration: "none",
+            }}>
               Se connecter
             </Link>
-            <Link
-              href="/login"
-              style={{
-                background: "transparent",
-                color: INK,
-                padding: "16px 36px",
-                borderRadius: 999,
-                fontWeight: 700,
-                fontSize: 16,
-                textDecoration: "none",
-                border: `2px solid ${INK}`,
-              }}
-            >
+            <Link href="/login" style={{
+              background: "transparent", color: INK, padding: "16px 36px",
+              borderRadius: 999, fontWeight: 700, fontSize: 16,
+              textDecoration: "none", border: `2px solid ${INK}`,
+            }}>
               Créer un compte
             </Link>
           </div>
@@ -297,18 +231,21 @@ export default function Home() {
   ];
 
   return (
-    <main style={{ minHeight: "100vh", background: CREAM, padding: 24, fontFamily: body }}>
+    <main style={{ minHeight: "100vh", background: CREAM, padding: "20px 16px", fontFamily: body }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
 
-        {/* HEADER */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <LoyaIcon size={48} />
+        {/* HEADER — s'empile sur mobile */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, marginBottom: 28, flexWrap: "wrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <LoyaIcon size={44} />
             <div>
-              <h1 style={{ fontFamily: display, fontWeight: 800, fontSize: 26, letterSpacing: "-0.02em", color: INK }}>
+              <h1 style={{ fontFamily: display, fontWeight: 800, fontSize: "clamp(20px, 5vw, 26px)", letterSpacing: "-0.02em", color: INK }}>
                 Bonjour {ownerName ? ownerName : ""} 👋
               </h1>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#7a684f", marginTop: 2 }}>Bienvenue sur Loya</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "#7a684f", marginTop: 2 }}>Bienvenue sur Loya</p>
             </div>
           </div>
           <button
@@ -331,34 +268,32 @@ export default function Home() {
         </div>
 
         {/* ALERTE RETARDS */}
-          {stats.lateTenantsNames.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 12,
-                border: "1px solid #e53e3e",
-                background: "#fff5f5",
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 24,
-              }}
-            >
-              <span style={{ fontSize: 18 }}>⚠️</span>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "#c53030" }}>
-                  {stats.lateTenantsNames.length} locataire{stats.lateTenantsNames.length > 1 ? "s" : ""} en retard de paiement
-                </p>
-                <p style={{ fontSize: 12, fontWeight: 500, color: "#e53e3e", marginTop: 2 }}>
-                  {stats.lateTenantsNames.join(" · ")}
-                </p>
-              </div>
+        {stats.lateTenantsNames.length > 0 && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 12,
+            border: "1px solid #e53e3e", background: "#fff5f5",
+            borderRadius: 16, padding: 16, marginBottom: 24,
+          }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#c53030" }}>
+                {stats.lateTenantsNames.length} locataire{stats.lateTenantsNames.length > 1 ? "s" : ""} en retard de paiement
+              </p>
+              <p style={{ fontSize: 12, fontWeight: 500, color: "#e53e3e", marginTop: 2 }}>
+                {stats.lateTenantsNames.join(" · ")}
+              </p>
             </div>
-          )}
+          </div>
+        )}
 
-        {/* TUILES */}
+        {/* TUILES — 2 colonnes sur mobile, 3 sur grand écran */}
         <p style={{ ...eyebrowStyle, marginBottom: 12 }}>Raccourcis</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 36 }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+          gap: 14,
+          marginBottom: 36,
+        }}>
           {tiles.map((t) => (
             <Link key={t.href} href={t.href} style={cardStyle}>
               <div style={chipStyle}>{t.icon}</div>
@@ -366,7 +301,7 @@ export default function Home() {
               <p style={tileSub}>{t.sub}</p>
 
               {t.tenants && (
-                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                   {stats.paidCount > 0 && (
                     <span style={badge("#e3f3e4", "#1f7a37")}>{stats.paidCount} payé{stats.paidCount > 1 ? "s" : ""}</span>
                   )}
@@ -377,7 +312,7 @@ export default function Home() {
               )}
 
               {t.vacant && stats.vacantCount > 0 && (
-                <span style={{ ...badge("#fbeccf", BROWN), marginTop: 12 }}>
+                <span style={{ ...badge("#fbeccf", BROWN), marginTop: 10 }}>
                   {stats.vacantCount} vacant{stats.vacantCount > 1 ? "s" : ""}
                 </span>
               )}
@@ -385,10 +320,14 @@ export default function Home() {
           ))}
         </div>
 
-        {/* STATISTIQUES (discret, second plan) */}
+        {/* STATISTIQUES — 2 colonnes sur mobile, 4 sur grand écran */}
         <div style={{ borderTop: "1px solid #e6d6bb", paddingTop: 24 }}>
           <p style={{ ...eyebrowStyle, color: MUTE, marginBottom: 16 }}>Statistiques du mois</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: 16,
+          }}>
             <Stat label="Encaissé" value={`${stats.collectedAmount.toLocaleString("fr-FR")} €`} />
             <Stat label="En attente" value={`${stats.pendingAmount.toLocaleString("fr-FR")} €`} />
             <Stat label="En retard" value={`${stats.lateTenantsNames.length} loc.`} />
@@ -403,8 +342,8 @@ export default function Home() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p style={{ fontSize: 11, fontWeight: 600, color: MUTE, marginBottom: 3 }}>{label}</p>
+    <div style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: `1px solid ${BORDER}` }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: MUTE, marginBottom: 4 }}>{label}</p>
       <p style={{ fontFamily: display, fontWeight: 700, fontSize: 17, color: "#5c4a2e" }}>{value}</p>
     </div>
   );
