@@ -6,11 +6,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
-/* ------------------------------------------------------------------
-   Locataires Loya — thème solaire, styles 100% en ligne (aucune
-   dépendance Tailwind). Toute la logique est identique à l'original.
-------------------------------------------------------------------- */
-
 const INK = "#1a1208";
 const CREAM = "#fbf1e3";
 const ORANGE = "#e8590c";
@@ -43,15 +38,6 @@ const fieldStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const REMINDER_OPTIONS = [
-  { value: 0, label: "Le jour de l'échéance" },
-  { value: 3, label: "3 jours après" },
-  { value: 7, label: "7 jours après" },
-  { value: 10, label: "10 jours après" },
-  { value: 15, label: "15 jours après" },
-  { value: 30, label: "30 jours après" },
-];
-
 function getCurrentMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -68,8 +54,6 @@ export default function TenantsPage() {
   const [rentDueDay, setRentDueDay] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [phone, setPhone] = useState("");
-  const [autoReminderEnabled, setAutoReminderEnabled] = useState(false);
-  const [reminderDays, setReminderDays] = useState<number[]>([]);
   const [properties, setProperties] = useState<any[]>([]);
   const [propertyId, setPropertyId] = useState("");
   const [search, setSearch] = useState("");
@@ -97,11 +81,8 @@ export default function TenantsPage() {
   async function fetchTenants() {
     const { data: userData } = await supabase.auth.getUser();
     const { data, error } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("user_id", userData.user?.id)
+      .from("tenants").select("*").eq("user_id", userData.user?.id)
       .order("created_at", { ascending: false });
-
     if (error) { console.log(error); return; }
     setTenants(data || []);
     await fetchPayments(data || []);
@@ -111,12 +92,8 @@ export default function TenantsPage() {
     if (tenantList.length === 0) { setPayments({}); return; }
     const monthKey = getCurrentMonthKey();
     const ids = tenantList.map((t) => t.id);
-    const { data, error } = await supabase
-      .from("payments")
-      .select("*")
-      .in("tenant_id", ids)
-      .eq("month", monthKey);
-
+    const { data, error } = await supabase.from("payments").select("*")
+      .in("tenant_id", ids).eq("month", monthKey);
     if (error) { console.log("Erreur fetch payments:", error); return; }
     const map: Record<string, any> = {};
     (data || []).forEach((p) => { map[p.tenant_id] = p; });
@@ -125,18 +102,9 @@ export default function TenantsPage() {
 
   async function fetchProperties() {
     const { data: userData } = await supabase.auth.getUser();
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("user_id", userData.user?.id)
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("properties").select("*")
+      .eq("user_id", userData.user?.id).order("created_at", { ascending: false });
     if (!error) setProperties(data || []);
-  }
-
-  function toggleReminderDay(day: number) {
-    setReminderDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)
-    );
   }
 
   async function addTenant() {
@@ -147,8 +115,10 @@ export default function TenantsPage() {
       rent_due_day: rentDueDay ? Number(rentDueDay) : null,
       property_address: propertyAddress,
       phone,
-      auto_reminder_enabled: autoReminderEnabled,
-      reminder_days: reminderDays,
+      // Relance auto désactivée par défaut — se configure dans la fiche locataire
+      auto_reminder_enabled: false,
+      reminder_days: [],
+      auto_receipt_enabled: false,
       user_id: userData.user?.id,
       property_id: propertyId || null,
     }]);
@@ -165,19 +135,14 @@ export default function TenantsPage() {
   async function updateTenant() {
     if (editingIndex === null) return;
     const tenant = tenants[editingIndex];
-    const { error } = await supabase
-      .from("tenants")
-      .update({
-        name, email,
-        rent: rent ? Number(rent) : null,
-        rent_due_day: rentDueDay ? Number(rentDueDay) : null,
-        property_address: propertyAddress,
-        phone,
-        auto_reminder_enabled: autoReminderEnabled,
-        reminder_days: reminderDays,
-        property_id: propertyId || null,
-      })
-      .eq("id", tenant.id);
+    const { error } = await supabase.from("tenants").update({
+      name, email,
+      rent: rent ? Number(rent) : null,
+      rent_due_day: rentDueDay ? Number(rentDueDay) : null,
+      property_address: propertyAddress,
+      phone,
+      property_id: propertyId || null,
+    }).eq("id", tenant.id);
     if (!error) { await fetchTenants(); resetForm(); }
     else console.log(error);
   }
@@ -190,8 +155,6 @@ export default function TenantsPage() {
     setRentDueDay(tenant.rent_due_day ?? "");
     setPropertyAddress(tenant.property_address ?? "");
     setPhone(tenant.phone ?? "");
-    setAutoReminderEnabled(tenant.auto_reminder_enabled ?? false);
-    setReminderDays(tenant.reminder_days ?? []);
     setEditingIndex(index);
     setShowForm(true);
     setPropertyId(tenant.property_id ?? "");
@@ -199,8 +162,8 @@ export default function TenantsPage() {
 
   function resetForm() {
     setName(""); setEmail(""); setRent(""); setRentDueDay("");
-    setPropertyAddress(""); setPhone(""); setAutoReminderEnabled(false);
-    setReminderDays([]); setEditingIndex(null); setShowForm(false); setPropertyId("");
+    setPropertyAddress(""); setPhone("");
+    setEditingIndex(null); setShowForm(false); setPropertyId("");
   }
 
   function getDueStatus(tenant: any, isPaid: boolean) {
@@ -211,9 +174,7 @@ export default function TenantsPage() {
     dueDate.setHours(0, 0, 0, 0);
     const todayMidnight = new Date(today);
     todayMidnight.setHours(0, 0, 0, 0);
-    const diffDays = Math.round(
-      (dueDate.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.round((dueDate.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays < 0) return { type: "late", label: `🔴 Retard ${Math.abs(diffDays)}j` };
     if (diffDays === 0) return { type: "today", label: "⚠️ Échéance auj." };
     if (diffDays <= 3) return { type: "soon", label: `⚠️ Dans ${diffDays}j` };
@@ -221,63 +182,30 @@ export default function TenantsPage() {
   }
 
   const filteredTenants = tenants.filter((t) =>
-    [t.name, t.email, t.property_address]
-      .filter(Boolean)
+    [t.name, t.email, t.property_address].filter(Boolean)
       .some((field) => field.toLowerCase().includes(search.toLowerCase()))
   );
 
-  // Stats
   const totalTenants = tenants.length;
   const paidCount = tenants.filter((t) => payments[t.id]?.is_paid).length;
   const pendingCount = totalTenants - paidCount;
-  const totalCollected = tenants
-    .filter((t) => payments[t.id]?.is_paid)
-    .reduce((sum, t) => sum + (t.rent || 0), 0);
+  const totalCollected = tenants.filter((t) => payments[t.id]?.is_paid).reduce((sum, t) => sum + (t.rent || 0), 0);
 
   return (
     <main style={{ minHeight: "100vh", background: CREAM, padding: 16, fontFamily: body, position: "relative", overflow: "hidden" }}>
-      {/* SOLEIL décoratif */}
-      <div
-        style={{
-          pointerEvents: "none",
-          position: "absolute",
-          right: -120,
-          top: -140,
-          width: 340,
-          height: 340,
-          borderRadius: "50%",
-          background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)",
-          opacity: 0.8,
-        }}
-      />
+      <div style={{ pointerEvents: "none", position: "absolute", right: -120, top: -140, width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)", opacity: 0.8 }} />
 
       <div style={{ position: "relative", maxWidth: 680, margin: "0 auto" }}>
 
-        {/* NAVIGATION */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-          <Link
-            href="/dashboard"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              background: "#fff", border: `2px solid ${FIELD_BORDER}`,
-              padding: "9px 16px", borderRadius: 999,
-              fontSize: 14, fontWeight: 700, color: INK, textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: `2px solid ${FIELD_BORDER}`, padding: "9px 16px", borderRadius: 999, fontSize: 14, fontWeight: 700, color: INK, textDecoration: "none", whiteSpace: "nowrap" }}>
             ← Accueil
           </Link>
         </div>
 
-        {/* TITRE */}
-        <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>
-          Gestion locative
-        </p>
-        <h1 style={{ fontFamily: display, fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 18 }}>
-          👥 Locataires
-        </h1>
+        <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>Gestion locative</p>
+        <h1 style={{ fontFamily: display, fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 18 }}>👥 Locataires</h1>
 
-        {/* RECHERCHE */}
         <input
           style={{ ...fieldStyle, marginBottom: 16, fontSize: 15 }}
           placeholder="🔍 Rechercher par nom, email ou adresse..."
@@ -285,7 +213,7 @@ export default function TenantsPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* STATS (discret, second plan) */}
+        {/* STATS */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24, paddingBottom: 18, marginBottom: 18, borderBottom: `1px solid ${FIELD_BORDER}` }}>
           {[
             { label: "Locataires", value: totalTenants },
@@ -301,26 +229,19 @@ export default function TenantsPage() {
         </div>
 
         {/* BOUTON AJOUTER */}
-        <button
-          onClick={() => setShowForm(!showForm)}
-          style={{
-            background: INK, color: CREAM,
-            padding: "14px 20px", borderRadius: 999,
-            border: "none", cursor: "pointer",
-            fontSize: 15, fontWeight: 700, fontFamily: body,
-            width: "100%", marginBottom: 16,
-            boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)",
-          }}
-        >
+        <button onClick={() => setShowForm(!showForm)} style={{ background: INK, color: CREAM, padding: "14px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: body, width: "100%", marginBottom: 16, boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)" }}>
           {showForm ? "Fermer" : "+ Ajouter un locataire"}
         </button>
 
-        {/* FORMULAIRE */}
+        {/* FORMULAIRE — sans les options d'automatisation */}
         {showForm && (
           <div style={{ background: "#fff", padding: 22, borderRadius: 20, border: `1px solid ${BORDER}`, boxShadow: "0 18px 40px -28px rgba(120,53,15,0.4)", marginBottom: 20 }}>
-            <h2 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 16 }}>
+            <h2 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 4 }}>
               {editingIndex !== null ? "Modifier locataire" : "Nouveau locataire"}
             </h2>
+            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16 }}>
+              Les options d'automatisation (relance, quittance) se configurent dans la fiche du locataire.
+            </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
@@ -330,88 +251,24 @@ export default function TenantsPage() {
                 { placeholder: "Adresse du bien (ex: 12 rue des Lilas, Paris)", value: propertyAddress, onChange: setPropertyAddress },
                 { placeholder: "Loyer (€)", value: rent, onChange: setRent },
               ].map(({ placeholder, value, onChange }) => (
-                <input
-                  key={placeholder}
-                  style={fieldStyle}
-                  placeholder={placeholder}
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
+                <input key={placeholder} style={fieldStyle} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
               ))}
 
-              <select
-                style={{ ...fieldStyle, color: INK, background: FIELD_BG }}
-                value={propertyId}
-                onChange={(e) => setPropertyId(e.target.value)}
-              >
+              <select style={{ ...fieldStyle, color: INK, background: FIELD_BG }} value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
                 <option value="">Aucun bien rattaché</option>
                 {properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.address} — {p.city}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.address} — {p.city}</option>
                 ))}
               </select>
 
-              <input
-                type="number" min="1" max="31"
-                style={fieldStyle}
-                placeholder="Jour du mois pour l'échéance (ex: 5)"
-                value={rentDueDay}
-                onChange={(e) => setRentDueDay(e.target.value)}
-              />
+              <input type="number" min="1" max="31" style={fieldStyle} placeholder="Jour du mois pour l'échéance (ex: 5)" value={rentDueDay} onChange={(e) => setRentDueDay(e.target.value)} />
             </div>
 
-            {/* RELANCE AUTO */}
-            <div style={{ border: `2px solid ${FIELD_BORDER}`, borderRadius: 14, padding: 16, marginTop: 14, marginBottom: 16, background: FIELD_BG }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700, color: INK, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={autoReminderEnabled}
-                  onChange={(e) => setAutoReminderEnabled(e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: ORANGE }}
-                />
-                🌞 Activer la relance automatique
-              </label>
-
-              {autoReminderEnabled && (
-                <div style={{ marginTop: 14, paddingLeft: 28, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: MUTE, marginBottom: 2 }}>Envoyer une relance :</p>
-                  {REMINDER_OPTIONS.map((opt) => (
-                    <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#5c4a2e", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={reminderDays.includes(opt.value)}
-                        onChange={() => toggleReminderDay(opt.value)}
-                        style={{ width: 17, height: 17, accentColor: ORANGE }}
-                      />
-                      {opt.label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={editingIndex !== null ? updateTenant : addTenant}
-                style={{
-                  background: INK, color: CREAM,
-                  padding: "12px 20px", borderRadius: 999,
-                  border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body,
-                  flex: 1,
-                }}
-              >
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button onClick={editingIndex !== null ? updateTenant : addTenant} style={{ background: INK, color: CREAM, padding: "12px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1 }}>
                 {editingIndex !== null ? "Modifier" : "Ajouter"}
               </button>
-              <button
-                onClick={resetForm}
-                style={{
-                  background: "transparent", color: INK,
-                  padding: "12px 20px", borderRadius: 999,
-                  border: `2px solid ${INK}`, cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body,
-                  flex: 1,
-                }}
-              >
+              <button onClick={resetForm} style={{ background: "transparent", color: INK, padding: "12px 20px", borderRadius: 999, border: `2px solid ${INK}`, cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1 }}>
                 Annuler
               </button>
             </div>
@@ -423,92 +280,47 @@ export default function TenantsPage() {
           {filteredTenants.map((t, i) => {
             const isPaid = !!payments[t.id]?.is_paid;
             const dueStatus = getDueStatus(t, isPaid);
-
-            let badgeLabel = "🟢 Payé";
-            let badgeBg = GREEN_BG;
-            let badgeColor = GREEN;
-
+            let badgeLabel = "🟢 Payé"; let badgeBg = GREEN_BG; let badgeColor = GREEN;
             if (!isPaid) {
-              if (dueStatus?.type === "late") {
-                badgeLabel = dueStatus.label;
-                badgeBg = RED_BG; badgeColor = RED;
-              } else if (dueStatus?.type === "today" || dueStatus?.type === "soon") {
-                badgeLabel = dueStatus.label;
-                badgeBg = AMBER_BG; badgeColor = AMBER;
-              } else {
-                badgeLabel = "🔴 En attente";
-                badgeBg = RED_BG; badgeColor = RED;
-              }
+              if (dueStatus?.type === "late") { badgeLabel = dueStatus.label; badgeBg = RED_BG; badgeColor = RED; }
+              else if (dueStatus?.type === "today" || dueStatus?.type === "soon") { badgeLabel = dueStatus.label; badgeBg = AMBER_BG; badgeColor = AMBER; }
+              else { badgeLabel = "🔴 En attente"; badgeBg = RED_BG; badgeColor = RED; }
             }
 
             return (
-              <div
-                key={t.id ?? t.email}
-                style={{ background: "#fff", borderRadius: 16, padding: "16px 18px", border: `1px solid ${BORDER}` }}
-              >
-                {/* Ligne 1 : nom + loyer */}
+              <div key={t.id ?? t.email} style={{ background: "#fff", borderRadius: 16, padding: "16px 18px", border: `1px solid ${BORDER}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                   <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK, margin: 0 }}>{t.name}</p>
-                  <p style={{ fontFamily: display, fontWeight: 800, fontSize: 17, color: INK, margin: 0, whiteSpace: "nowrap", marginLeft: 8 }}>
-                    {t.rent} €
-                  </p>
+                  <p style={{ fontFamily: display, fontWeight: 800, fontSize: 17, color: INK, margin: 0, whiteSpace: "nowrap", marginLeft: 8 }}>{t.rent} €</p>
                 </div>
-
-                {/* Ligne 2 : email */}
                 <p style={{ fontSize: 13, color: "#7a684f", margin: "0 0 2px" }}>{t.email}</p>
+                {t.property_address && <p style={{ fontSize: 13, color: MUTE, margin: "0 0 8px" }}>📍 {t.property_address}</p>}
 
-                {/* Ligne 3 : adresse */}
-                {t.property_address && (
-                  <p style={{ fontSize: 13, color: MUTE, margin: "0 0 8px" }}>
-                    📍 {t.property_address}
-                  </p>
-                )}
-
-                {/* Ligne 4 : badge statut */}
-                <div style={{ marginBottom: 12 }}>
-                  <span style={{
-                    display: "inline-block",
-                    background: badgeBg, color: badgeColor,
-                    padding: "4px 12px", borderRadius: 999,
-                    fontSize: 12, fontWeight: 700,
-                  }}>
+                {/* Badges automatisation */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                  <span style={{ display: "inline-block", background: badgeBg, color: badgeColor, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
                     {badgeLabel}
                   </span>
+                  {t.auto_reminder_enabled && (
+                    <span style={{ display: "inline-block", background: AMBER_BG, color: AMBER, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+                      🌞 Relance auto
+                    </span>
+                  )}
+                  {t.auto_receipt_enabled && (
+                    <span style={{ display: "inline-block", background: GREEN_BG, color: GREEN, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+                      📄 Quittance auto
+                    </span>
+                  )}
                 </div>
 
-                {/* Ligne 5 : actions */}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => startEdit(i)}
-                    style={{
-                      background: CREAM, color: BROWN,
-                      padding: "8px 14px", borderRadius: 999,
-                      border: `1px solid ${FIELD_BORDER}`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body,
-                    }}
-                  >
+                  <button onClick={() => startEdit(i)} style={{ background: CREAM, color: BROWN, padding: "8px 14px", borderRadius: 999, border: `1px solid ${FIELD_BORDER}`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}>
                     ✏️ Modifier
                   </button>
-
-                  <button
-                    onClick={() => deleteTenant(t.id)}
-                    style={{
-                      background: RED_BG, color: RED,
-                      padding: "8px 14px", borderRadius: 999,
-                      border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body,
-                    }}
-                  >
+                  <button onClick={() => deleteTenant(t.id)} style={{ background: RED_BG, color: RED, padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}>
                     🗑 Supprimer
                   </button>
-
-                  <Link
-                    href={`/tenants/${t.id}`}
-                    style={{
-                      background: INK, color: CREAM,
-                      padding: "8px 14px", borderRadius: 999,
-                      fontSize: 13, fontWeight: 700,
-                      textDecoration: "none", display: "inline-block",
-                    }}
-                  >
+                  <Link href={`/tenants/${t.id}`} style={{ background: INK, color: CREAM, padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none", display: "inline-block" }}>
                     📂 Voir le dossier
                   </Link>
                 </div>

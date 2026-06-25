@@ -16,7 +16,7 @@ function applyTemplate(template: string, vars: Record<string, string>) {
 
 export async function POST(req: Request) {
   try {
-    const { email, name, pdfUrl, month, ownerId } = await req.json();
+    const { email, name, pdfUrl, month, ownerId, receiptId } = await req.json();
 
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
@@ -52,6 +52,14 @@ export async function POST(req: Request) {
 
     if (error) {
       return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    // Mettre à jour sent_at si on a un receiptId
+    if (receiptId) {
+      await supabaseAdmin
+        .from("receipts")
+        .update({ sent_at: new Date().toISOString() })
+        .eq("id", receiptId);
     }
 
     return Response.json(data);
