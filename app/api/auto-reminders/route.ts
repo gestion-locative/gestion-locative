@@ -66,7 +66,7 @@ export async function GET(req: Request) {
 
     // Envoi de l'email
     const { error: sendError } = await resend.emails.send({
-      from: "relance@votredomaine.com",
+      from: "Loya <onboarding@resend.dev>",
       to: tenant.email,
       subject: "Rappel de paiement de loyer",
       html: `<p>Bonjour ${tenant.name}, votre loyer de ${tenant.rent}€ est en attente de paiement.</p>`,
