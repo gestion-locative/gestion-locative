@@ -69,7 +69,12 @@ export async function GET(req: Request) {
       from: "Loya <onboarding@resend.dev>",
       to: tenant.email,
       subject: "Rappel de paiement de loyer",
-      html: `<p>Bonjour ${tenant.name}, votre loyer de ${tenant.rent}€ est en attente de paiement.</p>`,
+      html: `
+  <p>Bonjour ${tenant.name},</p>
+  <p>Nous vous informons que le paiement de votre loyer de ${tenant.rent}€ est actuellement en attente. Nous vous remercions de bien vouloir procéder au règlement dans les meilleurs délais.</p>
+  <p>Pour toute question, n'hésitez pas à nous contacter.</p>
+  <p>Cordialement,<br/>${tenant.owner_name ?? "Votre propriétaire"}</p>
+`,
     });
 
     if (!sendError) {
