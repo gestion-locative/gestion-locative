@@ -137,7 +137,6 @@ export default function ProfilePage() {
       toast.error("Impossible d'enregistrer le profil, veuillez réessayer.");
     } else {
       toast.success("Profil enregistré !");
-      setFirstName("");
       setHasChanges(false);
     }
   }
