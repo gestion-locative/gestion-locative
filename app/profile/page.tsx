@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [receiptSubject, setReceiptSubject] = useState("");
   const [receiptBody, setReceiptBody] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [firstName, setFirstName] = useState("");
 
   useEffect(() => {
     fetchProfile();
@@ -91,7 +92,9 @@ export default function ProfilePage() {
     if (error) {
       console.log("Erreur fetch profile:", error);
     } else if (data) {
-      setFullName(data.full_name);
+      const nameParts = (data?.full_name ?? "").split(" ");
+      setFullName(nameParts[0] ?? "");
+      setFirstName(nameParts.slice(1).join(" ") ?? "");
       setAddress(data.address);
       setPostalCode(data.postal_code);
       setCity(data.city);
@@ -114,7 +117,7 @@ export default function ProfilePage() {
       .upsert(
         {
           user_id: userData.user?.id,
-          full_name: fullName,
+          full_name: `${fullName} ${firstName}`.trim(),
           address,
           postal_code: postalCode,
           city,
@@ -132,6 +135,7 @@ export default function ProfilePage() {
       toast.error("Impossible d'enregistrer le profil, veuillez réessayer.");
     } else {
       toast.success("Profil enregistré !");
+      setFirstName("");
       setHasChanges(false);
     }
   }
@@ -251,10 +255,16 @@ export default function ProfilePage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
-              style={inputStyle}
-              placeholder="Nom complet"
+              className="border p-2 w-full rounded"
+              placeholder="Nom"
               value={fullName}
               onChange={(e) => { setFullName(e.target.value); setHasChanges(true); }}
+            />
+            <input
+              className="border p-2 w-full rounded"
+              placeholder="Prénom"
+              value={firstName}
+              onChange={(e) => { setFirstName(e.target.value); setHasChanges(true); }}
             />
 
             {/* GENRE */}

@@ -57,6 +57,7 @@ export default function TenantsPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [propertyId, setPropertyId] = useState("");
   const [search, setSearch] = useState("");
+  const [firstName, setFirstName] = useState("");
 
   const router = useRouter();
 
@@ -110,7 +111,7 @@ export default function TenantsPage() {
   async function addTenant() {
     const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase.from("tenants").insert([{
-      name, email,
+      name: `${name} ${firstName}`.trim(), email,
       rent: rent ? Number(rent) : null,
       rent_due_day: rentDueDay ? Number(rentDueDay) : null,
       property_address: propertyAddress,
@@ -136,7 +137,7 @@ export default function TenantsPage() {
     if (editingIndex === null) return;
     const tenant = tenants[editingIndex];
     const { error } = await supabase.from("tenants").update({
-      name, email,
+      name: `${name} ${firstName}`.trim(), email,
       rent: rent ? Number(rent) : null,
       rent_due_day: rentDueDay ? Number(rentDueDay) : null,
       property_address: propertyAddress,
@@ -149,7 +150,9 @@ export default function TenantsPage() {
 
   function startEdit(index: number) {
     const tenant = tenants[index];
-    setName(tenant.name);
+    const parts = tenant.name ? tenant.name.split(" ") : [];
+    setName(parts[0] ?? "");
+    setFirstName(parts.slice(1).join(" ") ?? "");
     setEmail(tenant.email);
     setRent(tenant.rent);
     setRentDueDay(tenant.rent_due_day ?? "");
@@ -164,6 +167,7 @@ export default function TenantsPage() {
     setName(""); setEmail(""); setRent(""); setRentDueDay("");
     setPropertyAddress(""); setPhone("");
     setEditingIndex(null); setShowForm(false); setPropertyId("");
+    setFirstName("");
   }
 
   function getDueStatus(tenant: any, isPaid: boolean) {
@@ -246,6 +250,7 @@ export default function TenantsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { placeholder: "Nom", value: name, onChange: setName },
+                { placeholder: "Prénom", value: firstName, onChange: setFirstName },
                 { placeholder: "Email", value: email, onChange: setEmail },
                 { placeholder: "Téléphone", value: phone, onChange: setPhone },
                 { placeholder: "Adresse du bien (ex: 12 rue des Lilas, Paris)", value: propertyAddress, onChange: setPropertyAddress },
@@ -253,7 +258,6 @@ export default function TenantsPage() {
               ].map(({ placeholder, value, onChange }) => (
                 <input key={placeholder} style={fieldStyle} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
               ))}
-
               <select style={{ ...fieldStyle, color: INK, background: FIELD_BG }} value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
                 <option value="">Aucun bien rattaché</option>
                 {properties.map((p) => (
