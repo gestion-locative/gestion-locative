@@ -255,17 +255,15 @@ export default function ProfilePage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
-              className="border p-2 w-full rounded"
+              style={inputStyle}
               placeholder="Nom"
               value={fullName}
-              style={{ color: "#1a1208", backgroundColor: "transparent" }}
               onChange={(e) => { setFullName(e.target.value); setHasChanges(true); }}
             />
             <input
-              className="border p-2 w-full rounded"
+              style={inputStyle}
               placeholder="Prénom"
               value={firstName}
-              style={{ color: "#1a1208", backgroundColor: "transparent" }}
               onChange={(e) => { setFirstName(e.target.value); setHasChanges(true); }}
             />
 
