@@ -258,14 +258,14 @@ export default function ProfilePage() {
               className="border p-2 w-full rounded"
               placeholder="Nom"
               value={fullName}
-              style={{ color: "#1a1208"}}
+              style={{ color: "#1a1208", backgroundColor: "transparent" }}
               onChange={(e) => { setFullName(e.target.value); setHasChanges(true); }}
             />
             <input
               className="border p-2 w-full rounded"
               placeholder="Prénom"
               value={firstName}
-              style={{ color: "#1a1208"}}
+              style={{ color: "#1a1208", backgroundColor: "transparent" }}
               onChange={(e) => { setFirstName(e.target.value); setHasChanges(true); }}
             />
 
