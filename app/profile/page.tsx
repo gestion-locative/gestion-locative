@@ -259,8 +259,8 @@ export default function ProfilePage() {
             <input
               style={inputStyle}
               placeholder="Nom"
-              value={fullName}
-              onChange={(e) => { setFullName(e.target.value); setHasChanges(true); }}
+              value={lastName}
+              onChange={(e) => { setLastName(e.target.value); setHasChanges(true); }}
             />
             <input
               style={inputStyle}
