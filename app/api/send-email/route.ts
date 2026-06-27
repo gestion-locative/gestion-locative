@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     console.log("📩 EMAIL CLEAN:", email);
 
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "loyafr.com",
       to: email,
       subject,
       html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${message.replace(/\n/g, "<br>")}</div>`,
