@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
 
     const { data, error } = await resend.emails.send({
-      from: "loyafr.com",
+      from: "noreply@loyafr.com",
       to: email,
       subject,
       html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${message.replace(/\n/g, "<br>")}</div>`,
