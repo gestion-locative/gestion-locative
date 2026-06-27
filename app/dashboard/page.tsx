@@ -139,7 +139,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
 
     if (data?.full_name && data.full_name.trim() !== "") {
       const parts = data.full_name.trim().split(" ");
-      setOwnerName(parts[0]);
+      setOwnerName(parts[parts.length - 1]);
     }
   }
 
