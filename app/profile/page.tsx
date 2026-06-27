@@ -59,7 +59,8 @@ const helpText: React.CSSProperties = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [address, setAddress] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
@@ -73,7 +74,7 @@ export default function ProfilePage() {
   const [receiptSubject, setReceiptSubject] = useState("");
   const [receiptBody, setReceiptBody] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
-  const [firstName, setFirstName] = useState("");
+  
 
   useEffect(() => {
     fetchProfile();
@@ -92,9 +93,8 @@ export default function ProfilePage() {
     if (error) {
       console.log("Erreur fetch profile:", error);
     } else if (data) {
-      const nameParts = (data?.full_name ?? "").split(" ");
-      setFullName(nameParts[0] ?? "");
-      setFirstName(nameParts.slice(1).join(" ") ?? "");
+      setLastName(data?.last_name ?? "");
+      setFirstName(data?.first_name ?? "");
       setAddress(data.address);
       setPostalCode(data.postal_code);
       setCity(data.city);
@@ -117,7 +117,9 @@ export default function ProfilePage() {
       .upsert(
         {
           user_id: userData.user?.id,
-          full_name: `${fullName} ${firstName}`.trim(),
+          last_name: lastName,
+          first_name: firstName,
+          full_name: `${lastName} ${firstName}`.trim(),
           address,
           postal_code: postalCode,
           city,

@@ -131,17 +131,16 @@ async function createDefaultProfileIfNeeded(userId: string) {
 }
 
   async function fetchOwnerName(userId: string) {
-    const { data } = await supabase
-      .from("owner_profiles")
-      .select("full_name")
-      .eq("user_id", userId)
-      .maybeSingle();
+  const { data } = await supabase
+    .from("owner_profiles")
+    .select("first_name")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    if (data?.full_name && data.full_name.trim() !== "") {
-      const parts = data.full_name.trim().split(" ");
-      setOwnerName(parts[parts.length - 1]);
-    }
+  if (data?.first_name && data.first_name.trim() !== "") {
+    setOwnerName(data.first_name);
   }
+}
 
   async function fetchStats(userId: string) {
     const now = new Date();
