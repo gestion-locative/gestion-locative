@@ -93,14 +93,42 @@ export default function Home() {
     checkUser();
   }, []);
 
-  async function checkUser() {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) { setLoading(false); return; }
-    setUser(data.user);
-    await fetchStats(data.user.id);
-    await fetchOwnerName(data.user.id);
+async function checkUser() {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) {
     setLoading(false);
+    return;
   }
+  setUser(data.user);
+  await createDefaultProfileIfNeeded(data.user.id); // ← nouveau
+  await fetchStats(data.user.id);
+  await fetchOwnerName(data.user.id);
+  setLoading(false);
+}
+
+async function createDefaultProfileIfNeeded(userId: string) {
+  const { data } = await supabase
+    .from("owner_profiles")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!data) {
+    // Aucun profil → on en crée un avec les valeurs par défaut
+    await supabase.from("owner_profiles").insert({
+      user_id: userId,
+      full_name: "",
+      address: "",
+      postal_code: "",
+      city: "",
+      gender: "homme",
+      reminder_subject: "Rappel de paiement de loyer",
+      reminder_body: `Bonjour {nom_locataire},\n\nNous vous informons que le paiement de votre loyer de {loyer}€ est actuellement en attente. Nous vous remercions de bien vouloir procéder au règlement dans les meilleurs délais.\n\nPour toute question, n'hésitez pas à nous contacter.\n\nCordialement,\n{nom_proprietaire}`,
+      receipt_subject: "Quittance de loyer — {mois}",
+      receipt_body: `Bonjour {nom_locataire},\n\nNous vous remercions pour le règlement de votre loyer. Vous trouverez ci-joint votre quittance de loyer pour la période concernée.\n\nNous restons à votre disposition pour toute question.\n\nCordialement,\n{nom_proprietaire}`,
+    });
+  }
+}
 
   async function fetchOwnerName(userId: string) {
     const { data } = await supabase
