@@ -1,50 +1,46 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from "resend"
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const BRIDGE_HEADERS = {
+  'Content-Type': 'application/json',
+  'Bridge-Version': '2025-01-15',
+  'Client-Id': process.env.BRIDGE_CLIENT_ID!,
+  'Client-Secret': process.env.BRIDGE_CLIENT_SECRET!,
+}
+
 function matchTransaction(transaction: any, tenants: any[]) {
   const description = transaction.clean_description?.toLowerCase() || ''
   const amount = transaction.amount
 
-  // On ne traite que les virements entrants (montant positif)
   if (amount <= 0) return null
 
   for (const tenant of tenants) {
     const tenantName = tenant.name?.toLowerCase() || ''
     const tenantRent = tenant.rent
 
-    const amountMatches = Math.abs(amount - tenantRent) < 1 // tolérance 1€
+    const amountMatches = Math.abs(amount - tenantRent) < 1
     const nameMatches = description.includes(tenantName) ||
-      tenantName.split(' ').some((word: string) => 
+      tenantName.split(' ').some((word: string) =>
         word.length > 2 && description.includes(word)
       )
 
-    if (amountMatches && nameMatches) {
-      return { tenant, confidence: 'high' }
-    }
-    if (amountMatches) {
-      return { tenant, confidence: 'medium' }
-    }
-    if (nameMatches) {
-      return { tenant, confidence: 'low' }
-    }
+    if (amountMatches && nameMatches) return { tenant, confidence: 'high' }
+    if (amountMatches) return { tenant, confidence: 'medium' }
+    if (nameMatches) return { tenant, confidence: 'low' }
   }
 
   return null
 }
 
-
 async function confirmPayment(tenantId: string, transactionDate: string) {
-  // Formater le mois au format YYYY-MM
   const month = transactionDate.substring(0, 7)
 
-  // Vérifier si le paiement existe déjà pour ce mois
   const { data: existing } = await supabase
     .from('payments')
     .select('id')
@@ -53,7 +49,6 @@ async function confirmPayment(tenantId: string, transactionDate: string) {
     .single()
 
   if (existing) {
-    // Mettre à jour si déjà existant
     const { data, error } = await supabase
       .from('payments')
       .update({ is_paid: true, paid_at: new Date().toISOString() })
@@ -63,7 +58,6 @@ async function confirmPayment(tenantId: string, transactionDate: string) {
     return { action: 'updated', payment: data, error }
   }
 
-  // Créer une nouvelle ligne
   const { data, error } = await supabase
     .from('payments')
     .insert({
@@ -78,42 +72,11 @@ async function confirmPayment(tenantId: string, transactionDate: string) {
   return { action: 'created', payment: data, error }
 }
 
-/*async function generateAndSendReceipt(tenantId: string, paymentId: string) {
-  // Générer la quittance PDF
-  const receiptResponse = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/generate-receipt`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantId, paymentId })
-    }
-  )
-  const receiptData = await receiptResponse.json()
-
-  if (!receiptData.url) {
-    return { error: 'Quittance non générée', details: receiptData }
-  }
-
-  // Envoyer la quittance par email
-  const mailResponse = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/send-receipt-mail`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantId, paymentId })
-    }
-  )
-  const mailData = await mailResponse.json()
-
-  return { pdf_url: receiptData.url, mail: mailData }
-}*/
-
 async function generateAndSendReceipt(tenantId: string, paymentId: string) {
   try {
-    // Récupérer toutes les données nécessaires
     const { data: tenant } = await supabase
       .from('tenants').select('*').eq('id', tenantId).single()
-    
+
     const { data: payment } = await supabase
       .from('payments').select('*').eq('id', paymentId).single()
 
@@ -122,12 +85,10 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
 
     if (!tenant || !payment) return { error: 'Données manquantes' }
 
-    // Générer la quittance via l'API interne
-    const baseUrl = process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}`
-  : 'https://loyafr.com'
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://loyafr.com'
 
-    // Appel direct à generate-receipt avec le bon base URL
     const receiptRes = await fetch(`${baseUrl}/api/generate-receipt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -137,13 +98,10 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
     const receiptData = await receiptRes.json()
     if (!receiptData.url) return { error: 'Quittance non générée', details: receiptData }
 
-    // Récupérer la quittance créée pour avoir son ID
     const { data: receipt } = await supabase
       .from('receipts').select('id').eq('payment_id', paymentId).single()
 
-    // Envoyer l'email directement
     const resend = new Resend(process.env.RESEND_API_KEY!)
-
     const month = new Date(payment.month).toLocaleDateString('fr-FR', {
       month: 'long', year: 'numeric'
     })
@@ -175,10 +133,10 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
         .eq('id', receipt.id)
     }
 
-    return { 
-      pdf_url: receiptData.url, 
+    return {
+      pdf_url: receiptData.url,
       email_sent: !mailError,
-      email_error: mailError?.message 
+      email_error: mailError?.message
     }
 
   } catch (error: any) {
@@ -186,106 +144,105 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const headers = {
-      'Content-Type': 'application/json',
-      'Bridge-Version': '2025-01-15',
-      'Client-Id': process.env.BRIDGE_CLIENT_ID!,
-      'Client-Secret': process.env.BRIDGE_CLIENT_SECRET!,
+    // Récupérer tous les propriétaires avec une banque connectée
+    const { data: owners } = await supabase
+      .from('owner_profiles')
+      .select('user_id, bridge_user_uuid')
+      .not('bridge_user_uuid', 'is', null)
+
+    if (!owners || owners.length === 0) {
+      return NextResponse.json({ message: 'Aucun propriétaire avec banque connectée' })
     }
 
-    // Récupérer le token Bridge
-    const tokenResponse = await fetch(
-      'https://api.bridgeapi.io/v3/aggregation/authorization/token',
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ user_uuid: '1af16d4a-ac92-4701-8f90-6816069d3bc6' })
-      }
-    )
-    const tokenData = await tokenResponse.json()
+    const allResults: any[] = []
 
-    // Récupérer les transactions Bridge
-    const transactionsResponse = await fetch(
-      'https://api.bridgeapi.io/v3/aggregation/transactions',
-      {
-        headers: {
-          ...headers,
-          'Authorization': `Bearer ${tokenData.access_token}`,
+    for (const owner of owners) {
+      // Générer un token Bridge pour ce propriétaire
+      const tokenResponse = await fetch(
+        'https://api.bridgeapi.io/v3/aggregation/authorization/token',
+        {
+          method: 'POST',
+          headers: BRIDGE_HEADERS,
+          body: JSON.stringify({ user_uuid: owner.bridge_user_uuid })
         }
-      }
-    )
-    const transactionsData = await transactionsResponse.json()
-    const transactions = transactionsData.resources || []
+      )
+      const tokenData = await tokenResponse.json()
+      if (!tokenData.access_token) continue
 
-    // Transaction de test simulant un vrai loyer
-    const fakeTransaction = {
-    id: 999999,
-    clean_description: 'Virement Fanny Seach loyer',
-    amount: 54,
-    date: '2026-06-01',
-    }
-    transactions.push(fakeTransaction)
-
-
-    // Récupérer les locataires Supabase
-    const { data: tenants, error } = await supabase
-      .from('tenants')
-      .select('id, name, rent')
-
-    if (error) {
-      return NextResponse.json({ error: 'Erreur Supabase' }, { status: 500 })
-    }
-
-    // Matcher chaque transaction avec un locataire
-    const results = transactions
-      .map((transaction: any) => {
-        const match = matchTransaction(transaction, tenants || [])
-        if (!match) return null
-        return {
-          transaction: {
-            id: transaction.id,
-            amount: transaction.amount,
-            description: transaction.clean_description,
-            date: transaction.date,
-          },
-          tenant: match.tenant,
-          confidence: match.confidence,
+      // Récupérer les transactions
+      const transactionsResponse = await fetch(
+        'https://api.bridgeapi.io/v3/aggregation/transactions',
+        {
+          headers: {
+            ...BRIDGE_HEADERS,
+            'Authorization': `Bearer ${tokenData.access_token}`,
+          }
         }
-      })
-      .filter(Boolean)
+      )
+      const transactionsData = await transactionsResponse.json()
+      const transactions = transactionsData.resources || []
 
-    // Pour chaque match high → confirmer le paiement automatiquement
-    const confirmedPayments: any[] = []
-    for (const result of results) {
-    if (result.confidence === 'high') {
-        const confirmation = await confirmPayment(
-        result.tenant.id,
-        result.transaction.date
-        )
-        confirmedPayments.push({
-        tenant: result.tenant.name,
-        month: result.transaction.date.substring(0, 7),
-        ...confirmation
+      // Récupérer les locataires de ce propriétaire uniquement
+      const { data: tenants } = await supabase
+        .from('tenants')
+        .select('id, name, rent')
+        .eq('user_id', owner.user_id)
+
+      if (!tenants || tenants.length === 0) continue
+
+      // Matcher
+      const results = transactions
+        .map((transaction: any) => {
+          const match = matchTransaction(transaction, tenants)
+          if (!match) return null
+          return {
+            transaction: {
+              id: transaction.id,
+              amount: transaction.amount,
+              description: transaction.clean_description,
+              date: transaction.date,
+            },
+            tenant: match.tenant,
+            confidence: match.confidence,
+          }
         })
+        .filter(Boolean)
 
-        if (confirmation.payment && !confirmation.error) {
-        const receipt = await generateAndSendReceipt(
+      // Confirmer les paiements high confidence
+      const confirmedPayments: any[] = []
+      for (const result of results) {
+        if (result.confidence === 'high') {
+          const confirmation = await confirmPayment(
             result.tenant.id,
-            confirmation.payment.id
-        )
-        confirmedPayments[confirmedPayments.length - 1].receipt = receipt
+            result.transaction.date
+          )
+          confirmedPayments.push({
+            tenant: result.tenant.name,
+            month: result.transaction.date.substring(0, 7),
+            ...confirmation
+          })
+
+          if (confirmation.payment && !confirmation.error) {
+            const receipt = await generateAndSendReceipt(
+              result.tenant.id,
+              confirmation.payment.id
+            )
+            confirmedPayments[confirmedPayments.length - 1].receipt = receipt
+          }
         }
-    }
+      }
+
+      allResults.push({
+        owner_id: owner.user_id,
+        total_transactions: transactions.length,
+        matches_found: results.length,
+        confirmed: confirmedPayments
+      })
     }
 
-    return NextResponse.json({
-      total_transactions: transactions.length,
-      matches_found: results.length,
-      matches: results,
-      auto_confirmed: confirmedPayments
-    })
+    return NextResponse.json({ results: allResults })
 
   } catch (error) {
     console.error('Erreur :', error)
