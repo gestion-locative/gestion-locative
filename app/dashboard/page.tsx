@@ -77,6 +77,7 @@ export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [ownerName, setOwnerName] = useState("");
+  const [bankConnected, setBankConnected] = useState(false)
   const [stats, setStats] = useState({
     totalTenants: 0,
     paidCount: 0,
@@ -95,6 +96,7 @@ export default function Home() {
 
 async function checkUser() {
   const { data } = await supabase.auth.getUser();
+  const [bankConnected, setBankConnected] = useState(false)
   if (!data.user) {
     setLoading(false);
     return;
@@ -133,12 +135,15 @@ async function createDefaultProfileIfNeeded(userId: string) {
   async function fetchOwnerName(userId: string) {
   const { data } = await supabase
     .from("owner_profiles")
-    .select("first_name")
+    .select("first_name, bridge_user_uuid")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle()
 
   if (data?.first_name && data.first_name.trim() !== "") {
-    setOwnerName(data.first_name);
+    setOwnerName(data.first_name)
+  }
+  if (data?.bridge_user_uuid) {
+    setBankConnected(true)
   }
 }
 
@@ -339,10 +344,17 @@ async function createDefaultProfileIfNeeded(userId: string) {
 
         {tiles.map((t) => (
         t.bank ? (
-          <div key="bank" style={cardStyle}>
-            <div style={chipStyle}>{t.icon}</div>
-            <p style={tileTitle}>{t.title}</p>
-            <p style={tileSub}>{t.sub}</p>
+        <div key="bank" style={cardStyle}>
+          <div style={chipStyle}>🏦</div>
+          <p style={tileTitle}>Connexion bancaire</p>
+          <p style={tileSub}>
+            {bankConnected ? "Banque connectée" : "Synchroniser votre banque"}
+          </p>
+          {bankConnected ? (
+            <span style={{ ...badge("#e3f3e4", "#1f7a37"), marginTop: 10 }}>
+              ✓ Active
+            </span>
+          ) : (
             <button
               onClick={connectBank}
               style={{
@@ -360,8 +372,9 @@ async function createDefaultProfileIfNeeded(userId: string) {
             >
               Connecter
             </button>
-          </div>
-        ) : (
+          )}
+        </div>
+      ) : (
           <Link key={t.href} href={t.href} style={cardStyle}>
             <div style={chipStyle}>{t.icon}</div>
             <p style={tileTitle}>{t.title}</p>
