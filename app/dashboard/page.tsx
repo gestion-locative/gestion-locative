@@ -266,9 +266,10 @@ async function createDefaultProfileIfNeeded(userId: string) {
     { href: "/tenants", icon: "👥", title: "Mes locataires", sub: `${stats.totalTenants} locataire${stats.totalTenants > 1 ? "s" : ""}`, tenants: true },
     { href: "/properties", icon: "🏠", title: "Mes biens", sub: `${stats.totalProperties} bien${stats.totalProperties > 1 ? "s" : ""}`, vacant: true },
     { href: "/documents", icon: "📋", title: "Relances & Quittances", sub: "Relancer · Télécharger · Envoyer" },
+    {href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
     { href: "/tutorial", icon: "📖", title: "Guide d'utilisation", sub: "Découvrir toutes les fonctionnalités" },
     { href: "/install", icon: "📱", title: "Installer Loya", sub: "Ajouter sur votre écran d'accueil" },
-    { href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
+    
   ];
 
   return (
