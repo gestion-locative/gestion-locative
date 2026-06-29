@@ -96,7 +96,6 @@ export default function Home() {
 
 async function checkUser() {
   const { data } = await supabase.auth.getUser();
-  const [bankConnected, setBankConnected] = useState(false)
   if (!data.user) {
     setLoading(false);
     return;
