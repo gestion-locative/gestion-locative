@@ -261,6 +261,16 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 }
 
+async function disconnectBank() {
+  if (!user) return
+  await fetch('/api/bank/disconnect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user.id })
+  })
+  setBankConnected(false)
+}
+
   /* ---------- CONNECTÉ : dashboard ---------- */
   const collectRate =
     stats.totalTenants === 0 ? "—" : Math.round((stats.paidCount / stats.totalTenants) * 100) + "%";
@@ -350,28 +360,47 @@ async function createDefaultProfileIfNeeded(userId: string) {
             {bankConnected ? "Banque connectée" : "Synchroniser votre banque"}
           </p>
           {bankConnected ? (
-            <span style={{ ...badge("#e3f3e4", "#1f7a37"), marginTop: 10 }}>
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ ...badge("#e3f3e4", "#1f7a37") }}>
               ✓ Active
             </span>
-          ) : (
             <button
-              onClick={connectBank}
+              onClick={disconnectBank}
               style={{
-                marginTop: 10,
-                background: ORANGE,
-                color: '#fff',
+                background: 'none',
                 border: 'none',
-                borderRadius: 999,
-                padding: '6px 14px',
-                fontSize: 12,
-                fontWeight: 700,
+                color: MUTE,
+                fontSize: 11,
+                fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: body,
+                textDecoration: 'underline',
+                padding: 0,
+                textAlign: 'left',
               }}
             >
-              Connecter
+              Déconnecter
             </button>
-          )}
+          </div>
+        ) : (
+          <button
+            onClick={connectBank}
+            style={{
+              marginTop: 10,
+              background: ORANGE,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 999,
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: body,
+            }}
+          >
+            Connecter
+          </button>
+        )}
         </div>
       ) : (
           <Link key={t.href} href={t.href} style={cardStyle}>
