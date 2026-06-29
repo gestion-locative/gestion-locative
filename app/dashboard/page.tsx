@@ -244,6 +244,19 @@ async function createDefaultProfileIfNeeded(userId: string) {
     );
   }
 
+  async function connectBank() {
+  if (!user) return
+  const response = await fetch('/api/bank/connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user.id })
+  })
+  const data = await response.json()
+  if (data.connect_url) {
+    window.location.href = data.connect_url
+  }
+}
+
   /* ---------- CONNECTÉ : dashboard ---------- */
   const collectRate =
     stats.totalTenants === 0 ? "—" : Math.round((stats.paidCount / stats.totalTenants) * 100) + "%";
@@ -255,6 +268,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
     { href: "/documents", icon: "📋", title: "Relances & Quittances", sub: "Relancer · Télécharger · Envoyer" },
     { href: "/tutorial", icon: "📖", title: "Guide d'utilisation", sub: "Découvrir toutes les fonctionnalités" },
     { href: "/install", icon: "📱", title: "Installer Loya", sub: "Ajouter sur votre écran d'accueil" },
+    { href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
   ];
 
   return (
@@ -321,30 +335,56 @@ async function createDefaultProfileIfNeeded(userId: string) {
           gap: 14,
           marginBottom: 36,
         }}>
-          {tiles.map((t) => (
-            <Link key={t.href} href={t.href} style={cardStyle}>
-              <div style={chipStyle}>{t.icon}</div>
-              <p style={tileTitle}>{t.title}</p>
-              <p style={tileSub}>{t.sub}</p>
 
-              {t.tenants && (
-                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  {stats.paidCount > 0 && (
-                    <span style={badge("#e3f3e4", "#1f7a37")}>{stats.paidCount} payé{stats.paidCount > 1 ? "s" : ""}</span>
-                  )}
-                  {stats.pendingCount > 0 && (
-                    <span style={badge("#fcece6", "#b3361f")}>{stats.pendingCount} en attente</span>
-                  )}
-                </div>
-              )}
+        {tiles.map((t) => (
+        t.bank ? (
+          <div key="bank" style={cardStyle}>
+            <div style={chipStyle}>{t.icon}</div>
+            <p style={tileTitle}>{t.title}</p>
+            <p style={tileSub}>{t.sub}</p>
+            <button
+              onClick={connectBank}
+              style={{
+                marginTop: 10,
+                background: ORANGE,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 999,
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: body,
+              }}
+            >
+              Connecter
+            </button>
+          </div>
+        ) : (
+          <Link key={t.href} href={t.href} style={cardStyle}>
+            <div style={chipStyle}>{t.icon}</div>
+            <p style={tileTitle}>{t.title}</p>
+            <p style={tileSub}>{t.sub}</p>
 
-              {t.vacant && stats.vacantCount > 0 && (
-                <span style={{ ...badge("#fbeccf", BROWN), marginTop: 10 }}>
-                  {stats.vacantCount} vacant{stats.vacantCount > 1 ? "s" : ""}
-                </span>
-              )}
-            </Link>
-          ))}
+            {t.tenants && (
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                {stats.paidCount > 0 && (
+                  <span style={badge("#e3f3e4", "#1f7a37")}>{stats.paidCount} payé{stats.paidCount > 1 ? "s" : ""}</span>
+                )}
+                {stats.pendingCount > 0 && (
+                  <span style={badge("#fcece6", "#b3361f")}>{stats.pendingCount} en attente</span>
+                )}
+              </div>
+            )}
+
+            {t.vacant && stats.vacantCount > 0 && (
+              <span style={{ ...badge("#fbeccf", BROWN), marginTop: 10 }}>
+                {stats.vacantCount} vacant{stats.vacantCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </Link>
+        )
+      ))}
         </div>
 
         {/* STATISTIQUES */}

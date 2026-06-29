@@ -1,0 +1,30 @@
+api key : sb_publishable_cVcLvVb3xESynJn3Xx-Tbg_hn3ckQ7u
+api url : https://biaevdihbpryxhoclrtt.supabase.co
+
+lien public du site : https://gestion-locative-navy.vercel.app/
+http://localhost:3000
+
+
+e mail : 
+
+API Key : re_Drrd1Vbi_EbDYKpqheDU9ehb3ZQbrzbbR
+
+site : https://gestion-locative-navy.vercel.app/login
+https://gestion-locative-navy.vercel.app/
+
+
+api_key : 1fbeadf5e923b6e221962ee2c262bbdb901e6bc8a450fb9edc6f1e94d75d9431
+
+
+git add .
+git commit -m "Fix responsive mobile dashboard"
+
+client id bridge :  sandbox_id_0afc9a7216f945d0b9aedce23cf02f9a
+client secret bridge : sandbox_secret_4PlrPldFf9yJ5UzscjdxZEx0taTBdDIjlN7dAOjVUTZzPuhQnNr4u0sB9HrVqVCv
+
+id compte demo bridge : success
+mdp compte demo bridge : test123
+
+
+
+git push
