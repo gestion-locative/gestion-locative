@@ -289,7 +289,7 @@ async function disconnectBank() {
     { href: "/install", icon: "📱", title: "Installer Loya", sub: "Ajouter sur votre écran d'accueil" },
     
   ];
-
+  console.log('bankConnected:', bankConnected)
   return (
     <main style={{ minHeight: "100vh", background: CREAM, padding: "20px 16px", fontFamily: body }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
