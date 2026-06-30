@@ -111,7 +111,7 @@ export default function TenantsPage() {
   async function addTenant() {
     const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase.from("tenants").insert([{
-      name: `${name} ${firstName}`.trim(), email,
+      name: `${firstName} ${name}`.trim(), email,
       rent: rent ? Number(rent) : null,
       rent_due_day: rentDueDay ? Number(rentDueDay) : null,
       property_address: propertyAddress,
@@ -137,7 +137,7 @@ export default function TenantsPage() {
     if (editingIndex === null) return;
     const tenant = tenants[editingIndex];
     const { error } = await supabase.from("tenants").update({
-      name: `${name} ${firstName}`.trim(), email,
+      name: `${firstName} ${name}`.trim(), email,
       rent: rent ? Number(rent) : null,
       rent_due_day: rentDueDay ? Number(rentDueDay) : null,
       property_address: propertyAddress,

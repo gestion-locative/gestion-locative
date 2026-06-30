@@ -119,7 +119,7 @@ export default function ProfilePage() {
           user_id: userData.user?.id,
           last_name: lastName,
           first_name: firstName,
-          full_name: `${lastName} ${firstName}`.trim(),
+          full_name: `${firstName} ${lastName}`.trim(),
           address,
           postal_code: postalCode,
           city,

@@ -14,6 +14,7 @@ const BRIDGE_HEADERS = {
 }
 
 export async function POST(req: Request) {
+  console.log('🔥 ROUTE APPELÉE')
   try {
     const { userId } = await req.json()
     console.log('1 - userId reçu:', userId)
