@@ -7,6 +7,10 @@
     {
       "path": "/api/bank/match",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/rent-call",
+      "schedule": "0 7 1 * *"
     }
   ]
 }

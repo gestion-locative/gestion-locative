@@ -73,6 +73,9 @@ export default function ProfilePage() {
   const [reminderBody, setReminderBody] = useState("");
   const [receiptSubject, setReceiptSubject] = useState("");
   const [receiptBody, setReceiptBody] = useState("");
+  const [iban, setIban] = useState("");
+  const [rentCallSubject, setRentCallSubject] = useState("");
+  const [rentCallBody, setRentCallBody] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   
 
@@ -104,12 +107,27 @@ export default function ProfilePage() {
       setReminderBody(data.reminder_body ?? `Bonjour {nom_locataire},\n\nNous vous informons que le paiement de votre loyer de {loyer}€ est actuellement en attente. Nous vous remercions de bien vouloir procéder au règlement dans les meilleurs délais.\n\nPour toute question, n'hésitez pas à nous contacter.\n\nCordialement,\n{nom_proprietaire}`);
       setReceiptSubject(data.receipt_subject ?? "Quittance de loyer — {mois}");
       setReceiptBody(data.receipt_body ?? `Bonjour {nom_locataire},\n\nNous vous remercions pour le règlement de votre loyer. Vous trouverez ci-joint votre quittance de loyer pour la période concernée.\n\nNous restons à votre disposition pour toute question.\n\nCordialement,\n{nom_proprietaire}`);
+      setIban(data.iban ?? "");
+      setRentCallSubject(data.rent_call_subject ?? "Appel de loyer — {mois}");
+      setRentCallBody(data.rent_call_body ?? `Bonjour {nom_locataire},\n\nPetit rappel : le loyer de {loyer}€ pour {mois} est à régler avant le {jour_echeance} du mois.\n\n{iban_ligne}\n\nMerci d'avance,\n\nBien cordialement,\n{nom_proprietaire}`);
     }
 
     setLoadingPage(false);
   }
 
+  function isValidIban(value: string): boolean {
+  if (!value) return true // vide = pas obligatoire
+  const cleaned = value.replace(/\s/g, '').toUpperCase()
+  // Format IBAN français : FR + 2 chiffres + 23 caractères alphanumériques = 27 caractères
+  const ibanRegex = /^FR\d{2}[A-Z0-9]{23}$/
+  return ibanRegex.test(cleaned)
+}
+
   async function saveProfile() {
+    if (iban && !isValidIban(iban)) {
+    toast.error("Format IBAN invalide. Il doit commencer par FR suivi de 25 chiffres/lettres.");
+    return;
+  }
     setLoading(true);
     const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase
@@ -128,6 +146,9 @@ export default function ProfilePage() {
           reminder_body: reminderBody,
           receipt_subject: receiptSubject,
           receipt_body: receiptBody,
+          iban,
+          rent_call_subject: rentCallSubject,
+          rent_call_body: rentCallBody,
         },
         { onConflict: "user_id" }
       );
@@ -398,6 +419,45 @@ export default function ProfilePage() {
               rows={6}
               value={receiptBody}
               onChange={(e) => { setReceiptBody(e.target.value); setHasChanges(true); }}
+            />
+
+            <div style={{ marginTop: 16 }}>
+              <SaveRow />
+            </div>
+          </div>
+
+          {/* APPEL DE LOYER */}
+          <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${FIELD_BORDER}` }}>
+            <h2 style={sectionTitle}>🏦 Appel de loyer & IBAN</h2>
+            <p style={helpText}>
+              Envoyé automatiquement à vos locataires le 1er de chaque mois, avant l'échéance.
+              Variables disponibles :{" "}
+              {["{nom_locataire}", "{loyer}", "{mois}", "{jour_echeance}", "{iban_ligne}", "{nom_proprietaire}"].map((v) => (
+                <code key={v} style={{ fontFamily: mono, fontSize: 11.5, background: CREAM, padding: "1px 6px", borderRadius: 5, color: BROWN, marginRight: 4 }}>{v}</code>
+              ))}
+            </p>
+
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>💳 Votre IBAN</p>
+            <input
+              style={{ ...inputStyle, marginBottom: 18, fontSize: 14 }}
+              placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+              value={iban}
+              onChange={(e) => { setIban(e.target.value); setHasChanges(true); }}
+            />
+
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>📨 Email d'appel de loyer</p>
+            <input
+              style={{ ...inputStyle, marginBottom: 8, fontSize: 14 }}
+              placeholder="Objet"
+              value={rentCallSubject}
+              onChange={(e) => { setRentCallSubject(e.target.value); setHasChanges(true); }}
+            />
+            <textarea
+              style={{ ...inputStyle, fontSize: 14, resize: "vertical", lineHeight: 1.5 }}
+              placeholder="Message"
+              rows={6}
+              value={rentCallBody}
+              onChange={(e) => { setRentCallBody(e.target.value); setHasChanges(true); }}
             />
 
             <div style={{ marginTop: 16 }}>
