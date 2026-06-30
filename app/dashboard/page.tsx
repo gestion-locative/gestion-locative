@@ -253,6 +253,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 
   async function connectBank() {
+    console.log('Clic détecté, user:', user)
   if (!user) return
   const response = await fetch('/api/bank/connect', {
     method: 'POST',
@@ -395,7 +396,7 @@ async function disconnectBank() {
           </div>
         ) : (
           <button
-            onClick={connectBank}
+            onClick={() => alert('ça marche')}
             style={{
               marginTop: 10,
               background: ORANGE,
