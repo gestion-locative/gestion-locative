@@ -78,6 +78,7 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [ownerName, setOwnerName] = useState("");
   const [bankConnected, setBankConnected] = useState(false)
+  const [lastSync, setLastSync] = useState<string | null>(null)
   const [stats, setStats] = useState({
     totalTenants: 0,
     paidCount: 0,
@@ -134,7 +135,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
   async function fetchOwnerName(userId: string) {
   const { data } = await supabase
     .from("owner_profiles")
-    .select("first_name, bridge_user_uuid")
+    .select("first_name, bridge_user_uuid, last_bank_sync_at")
     .eq("user_id", userId)
     .maybeSingle()
 
@@ -143,6 +144,9 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
   if (data?.bridge_user_uuid) {
     setBankConnected(true)
+  }
+  if (data?.last_bank_sync_at) {
+    setLastSync(data.last_bank_sync_at)
   }
 }
 
@@ -364,6 +368,13 @@ async function disconnectBank() {
             <span style={{ ...badge("#e3f3e4", "#1f7a37") }}>
               ✓ Active
             </span>
+            {lastSync && (
+              <p style={{ fontSize: 11, color: MUTE, margin: 0 }}>
+                Dernière synchro : {new Date(lastSync).toLocaleDateString('fr-FR', {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                })}
+              </p>
+            )}
             <button
               onClick={disconnectBank}
               style={{

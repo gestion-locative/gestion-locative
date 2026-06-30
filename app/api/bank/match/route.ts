@@ -146,6 +146,10 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
 
 export async function GET(req: Request) {
   try {
+    const authHeader = req.headers.get('authorization')
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
     // Récupérer tous les propriétaires avec une banque connectée
     const { data: owners } = await supabase
       .from('owner_profiles')
@@ -240,6 +244,13 @@ export async function GET(req: Request) {
         matches_found: results.length,
         confirmed: confirmedPayments
       })
+
+      // Mettre à jour la date de dernière synchro
+    await supabase
+    .from('owner_profiles')
+    .update({ last_bank_sync_at: new Date().toISOString() })
+    .eq('user_id', owner.user_id)
+
     }
 
     return NextResponse.json({ results: allResults })
