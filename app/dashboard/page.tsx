@@ -253,14 +253,21 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 
   async function connectBank() {
-    console.log('Clic détecté, user:', user)
-  if (!user) return
+  console.log('1 - fonction appelée')
+  console.log('2 - user:', user)
+  if (!user) {
+    console.log('3 - bloqué car pas de user')
+    return
+  }
+  console.log('4 - avant le fetch')
   const response = await fetch('/api/bank/connect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: user.id })
   })
+  console.log('5 - réponse reçue:', response.status)
   const data = await response.json()
+  console.log('6 - data:', data)
   if (data.connect_url) {
     window.location.href = data.connect_url
   }
@@ -396,7 +403,7 @@ async function disconnectBank() {
           </div>
         ) : (
           <button
-            onClick={() => alert('ça marche')}
+            onClick={connectBank}
             style={{
               marginTop: 10,
               background: ORANGE,
