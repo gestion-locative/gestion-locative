@@ -43,10 +43,15 @@ async function confirmPayment(tenantId: string, transactionDate: string) {
 
   const { data: existing } = await supabase
     .from('payments')
-    .select('id')
+    .select('id, is_paid')
     .eq('tenant_id', tenantId)
     .eq('month', `${month}-01`)
     .single()
+
+  // Si déjà payé → on ne fait rien du tout
+  if (existing?.is_paid) {
+    return { action: 'already_paid', payment: existing, error: null }
+  }
 
   if (existing) {
     const { data, error } = await supabase
@@ -228,7 +233,7 @@ export async function GET(req: Request) {
             ...confirmation
           })
 
-          if (confirmation.payment && !confirmation.error) {
+          if (confirmation.payment && !confirmation.error && confirmation.action !== 'already_paid') {
             const receipt = await generateAndSendReceipt(
               result.tenant.id,
               confirmation.payment.id

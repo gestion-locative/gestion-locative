@@ -14,10 +14,8 @@ const BRIDGE_HEADERS = {
 }
 
 export async function POST(req: Request) {
-  console.log('🔥 ROUTE APPELÉE')
   try {
     const { userId } = await req.json()
-    console.log('1 - userId reçu:', userId)
 
     const { data: owner } = await supabase
       .from('owner_profiles')
@@ -25,12 +23,9 @@ export async function POST(req: Request) {
       .eq('user_id', userId)
       .single()
 
-    console.log('2 - owner trouvé:', owner)
-
     let bridgeUserUuid = owner?.bridge_user_uuid
 
     if (!bridgeUserUuid) {
-      console.log('3 - création utilisateur Bridge')
       const userResponse = await fetch(
         'https://api.bridgeapi.io/v3/aggregation/users',
         {
@@ -40,16 +35,22 @@ export async function POST(req: Request) {
         }
       )
       const userData = await userResponse.json()
-      console.log('4 - userData Bridge:', userData)
-      bridgeUserUuid = userData.uuid
 
-      await supabase
-        .from('owner_profiles')
-        .update({ bridge_user_uuid: bridgeUserUuid })
-        .eq('user_id', userId)
+      if (userData.uuid) {
+        bridgeUserUuid = userData.uuid
+      } else if (userData.errors?.[0]?.code === 'users.creation.already_exists_with_external_user_id') {
+        const listResponse = await fetch(
+          `https://api.bridgeapi.io/v3/aggregation/users?external_user_id=loya-${userId}`,
+          { headers: BRIDGE_HEADERS }
+        )
+        const listData = await listResponse.json()
+        bridgeUserUuid = listData.resources?.[0]?.uuid
+      }
     }
 
-    console.log('5 - bridgeUserUuid final:', bridgeUserUuid)
+    if (!bridgeUserUuid) {
+      return NextResponse.json({ error: 'Impossible de créer ou récupérer l\'utilisateur Bridge' }, { status: 500 })
+    }
 
     const tokenResponse = await fetch(
       'https://api.bridgeapi.io/v3/aggregation/authorization/token',
@@ -60,7 +61,10 @@ export async function POST(req: Request) {
       }
     )
     const tokenData = await tokenResponse.json()
-    console.log('6 - tokenData:', tokenData)
+
+    if (!tokenData.access_token) {
+      return NextResponse.json({ error: 'Impossible de générer le token Bridge' }, { status: 500 })
+    }
 
     const sessionResponse = await fetch(
       'https://api.bridgeapi.io/v3/aggregation/connect-sessions',
@@ -73,17 +77,16 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           user_email: 'proprietaire@loya.fr',
           country_code: 'FR',
-          callback_url: 'https://loyafr.com/dashboard?bank=connected'
+          callback_url: `https://loyafr.com/dashboard?bank=pending&bridge_uuid=${bridgeUserUuid}`
         })
       }
     )
     const sessionData = await sessionResponse.json()
-    console.log('7 - sessionData:', sessionData)
 
     return NextResponse.json({ connect_url: sessionData.url })
 
   } catch (error) {
-    console.error('ERREUR:', error)
+    console.error('Erreur connexion bancaire:', error)
     return NextResponse.json({ error: 'Erreur' }, { status: 500 })
   }
 }

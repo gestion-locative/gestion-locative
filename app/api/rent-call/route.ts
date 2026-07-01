@@ -67,13 +67,20 @@ export async function GET(req: Request) {
       const message = applyTemplate(bodyTemplate, vars)
 
       const { error } = await resend.emails.send({
-        from: 'noreply@loyafr.com',
-        to: tenant.email,
-        subject,
-        html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${message.replace(/\n/g, '<br>')}</div>`,
-      })
+  from: 'noreply@loyafr.com',
+  to: tenant.email,
+  subject,
+  html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${message.replace(/\n/g, '<br>')}</div>`,
+})
 
-      sentEmails.push({ tenant: tenant.name, sent: !error, error: error?.message })
+if (!error) {
+  await supabase
+    .from('tenants')
+    .update({ last_rent_call_sent_at: new Date().toISOString() })
+    .eq('id', tenant.id)
+}
+
+sentEmails.push({ tenant: tenant.name, sent: !error, error: error?.message })
     }
 
     return NextResponse.json({ total: tenants.length, sent: sentEmails })

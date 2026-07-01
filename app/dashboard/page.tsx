@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { LoyaIcon } from "@/components/LoyaLogo";
+import toast from "react-hot-toast";
 
 const INK = "#1a1208";
 const CREAM = "#fbf1e3";
@@ -79,6 +80,7 @@ export default function Home() {
   const [ownerName, setOwnerName] = useState("");
   const [bankConnected, setBankConnected] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
+  const [bankExpiringSoon, setBankExpiringSoon] = useState(false)
   const [stats, setStats] = useState({
     totalTenants: 0,
     paidCount: 0,
@@ -91,9 +93,39 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(true);
 
+  
+
   useEffect(() => {
     checkUser();
   }, []);
+
+
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+  const bankStatus = params.get('bank')
+  const bridgeUuid = params.get('bridge_uuid')
+
+  if (bankStatus === 'pending' && bridgeUuid && user) {
+    confirmBankConnection(bridgeUuid)
+  }
+}, [user])
+
+async function confirmBankConnection(bridgeUuid: string) {
+  const response = await fetch('/api/bank/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user.id, bridgeUuid })
+  })
+  const data = await response.json()
+  if (data.confirmed) {
+    setBankConnected(true)
+    toast.success('Banque connectée avec succès !')
+  }
+  // Nettoyer l'URL
+  window.history.replaceState({}, '', '/dashboard')
+}
+
+
 
 async function checkUser() {
   const { data } = await supabase.auth.getUser();
@@ -114,6 +146,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
     .select("id")
     .eq("user_id", userId)
     .maybeSingle();
+  
 
   if (!data) {
     // Aucun profil → on en crée un avec les valeurs par défaut
@@ -135,9 +168,10 @@ async function createDefaultProfileIfNeeded(userId: string) {
   async function fetchOwnerName(userId: string) {
   const { data } = await supabase
     .from("owner_profiles")
-    .select("first_name, bridge_user_uuid, last_bank_sync_at")
+    .select("first_name, bridge_user_uuid, last_bank_sync_at, bridge_connected_at")
     .eq("user_id", userId)
     .maybeSingle()
+    console.log('data complet:', data)
 
   if (data?.first_name && data.first_name.trim() !== "") {
     setOwnerName(data.first_name)
@@ -145,6 +179,17 @@ async function createDefaultProfileIfNeeded(userId: string) {
   if (data?.bridge_user_uuid) {
     setBankConnected(true)
   }
+
+  if (data?.bridge_connected_at) {
+  const connectedAt = new Date(data.bridge_connected_at)
+  const expiryDate = new Date(connectedAt)
+  expiryDate.setDate(expiryDate.getDate() + 90)
+  const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  console.log('bridge_connected_at:', data.bridge_connected_at)
+  console.log('daysLeft:', daysLeft)
+  if (daysLeft <= 15) setBankExpiringSoon(true)
+}
+
   if (data?.last_bank_sync_at) {
     setLastSync(data.last_bank_sync_at)
   }
@@ -376,7 +421,12 @@ async function disconnectBank() {
             <span style={{ ...badge("#e3f3e4", "#1f7a37") }}>
               ✓ Active
             </span>
-            {lastSync && (
+            {bankExpiringSoon && (
+              <p style={{ fontSize: 11, color: "#b3361f", fontWeight: 700, margin: "4px 0 0" }}>
+                ⚠️ Expire bientôt — cliquez sur "Déconnecter" puis "Connecter"
+              </p>
+            )}
+                        {lastSync && (
               <p style={{ fontSize: 11, color: MUTE, margin: 0 }}>
                 Dernière synchro : {new Date(lastSync).toLocaleDateString('fr-FR', {
                   day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'

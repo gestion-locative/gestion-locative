@@ -43,11 +43,41 @@ function getCurrentMonthKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
+/* ── Modale confirmation suppression ── */
+function DeleteModal({ tenantName, onConfirm, onCancel }: { tenantName: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,18,8,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#fff", borderRadius: 24, padding: "32px 28px", maxWidth: 400, width: "100%", boxShadow: "0 32px 80px -20px rgba(26,18,8,0.5)", border: `1px solid ${BORDER}`, position: "relative", overflow: "hidden" }}>
+        <div style={{ pointerEvents: "none", position: "absolute", right: -60, top: -60, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)", opacity: 0.6 }} />
+        <div style={{ position: "relative" }}>
+          <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: RED, marginBottom: 8 }}>
+            Suppression
+          </p>
+          <h2 style={{ fontFamily: display, fontSize: 22, fontWeight: 800, color: INK, marginBottom: 10, letterSpacing: "-0.02em" }}>
+            Supprimer ce locataire ?
+          </h2>
+          <p style={{ fontSize: 14, color: "#7a684f", lineHeight: 1.6, marginBottom: 28 }}>
+            Vous êtes sur le point de supprimer <strong style={{ color: INK }}>{tenantName}</strong>. Cette action est irréversible.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button onClick={onConfirm} style={{ padding: "14px 20px", borderRadius: 999, background: RED, color: "#fff", fontFamily: body, fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer" }}>
+              🗑 Oui, supprimer
+            </button>
+            <button onClick={onCancel} style={{ padding: "13px 20px", borderRadius: 999, background: "transparent", color: "#7a684f", fontFamily: body, fontWeight: 700, fontSize: 15, border: `2px solid ${FIELD_BORDER}`, cursor: "pointer" }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<any[]>([]);
   const [payments, setPayments] = useState<Record<string, any>>({});
   const [showForm, setShowForm] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [rent, setRent] = useState("");
@@ -58,6 +88,7 @@ export default function TenantsPage() {
   const [propertyId, setPropertyId] = useState("");
   const [search, setSearch] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{ id: string; name: string } | null>(null);
 
   const router = useRouter();
 
@@ -116,26 +147,18 @@ export default function TenantsPage() {
       rent_due_day: rentDueDay ? Number(rentDueDay) : null,
       property_address: propertyAddress,
       phone,
-      // Relance auto désactivée par défaut — se configure dans la fiche locataire
       auto_reminder_enabled: false,
       reminder_days: [],
       auto_receipt_enabled: false,
       user_id: userData.user?.id,
       property_id: propertyId || null,
     }]);
-    if (!error) { resetForm(); await fetchTenants(); }
-    else console.log(error);
-  }
-
-  async function deleteTenant(id: string) {
-    const { error } = await supabase.from("tenants").delete().eq("id", id);
-    if (!error) fetchTenants();
-    else toast.error("Erreur lors de la suppression.");
+    if (!error) { resetForm(); await fetchTenants(); toast.success("Locataire ajouté !"); }
+    else toast.error("Erreur lors de l'ajout.");
   }
 
   async function updateTenant() {
-    if (editingIndex === null) return;
-    const tenant = tenants[editingIndex];
+    if (!editingId) return;
     const { error } = await supabase.from("tenants").update({
       name: `${firstName} ${name}`.trim(), email,
       rent: rent ? Number(rent) : null,
@@ -143,30 +166,40 @@ export default function TenantsPage() {
       property_address: propertyAddress,
       phone,
       property_id: propertyId || null,
-    }).eq("id", tenant.id);
-    if (!error) { await fetchTenants(); resetForm(); }
-    else console.log(error);
+    }).eq("id", editingId);
+    if (!error) { await fetchTenants(); resetForm(); toast.success("Locataire modifié !"); }
+    else toast.error("Erreur lors de la modification.");
   }
 
-  function startEdit(index: number) {
-    const tenant = tenants[index];
-    const parts = tenant.name ? tenant.name.split(" ") : [];
+  async function confirmDelete() {
+    if (!deleteModal) return;
+    const { error } = await supabase.from("tenants").delete().eq("id", deleteModal.id);
+    setDeleteModal(null);
+    if (!error) { await fetchTenants(); toast.success("Locataire supprimé."); }
+    else toast.error("Erreur lors de la suppression.");
+  }
+
+  function startEdit(t: any, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const parts = t.name ? t.name.split(" ") : [];
     setName(parts[0] ?? "");
     setFirstName(parts.slice(1).join(" ") ?? "");
-    setEmail(tenant.email);
-    setRent(tenant.rent);
-    setRentDueDay(tenant.rent_due_day ?? "");
-    setPropertyAddress(tenant.property_address ?? "");
-    setPhone(tenant.phone ?? "");
-    setEditingIndex(index);
+    setEmail(t.email);
+    setRent(t.rent);
+    setRentDueDay(t.rent_due_day ?? "");
+    setPropertyAddress(t.property_address ?? "");
+    setPhone(t.phone ?? "");
+    setEditingId(t.id);
     setShowForm(true);
-    setPropertyId(tenant.property_id ?? "");
+    setPropertyId(t.property_id ?? "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function resetForm() {
     setName(""); setEmail(""); setRent(""); setRentDueDay("");
     setPropertyAddress(""); setPhone("");
-    setEditingIndex(null); setShowForm(false); setPropertyId("");
+    setEditingId(null); setShowForm(false); setPropertyId("");
     setFirstName("");
   }
 
@@ -198,6 +231,15 @@ export default function TenantsPage() {
   return (
     <main style={{ minHeight: "100vh", background: CREAM, padding: 16, fontFamily: body, position: "relative", overflow: "hidden" }}>
       <div style={{ pointerEvents: "none", position: "absolute", right: -120, top: -140, width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle at 35% 35%, #ffd166, #f9a826 60%, #f4801f)", opacity: 0.8 }} />
+
+      {/* MODALE SUPPRESSION */}
+      {deleteModal && (
+        <DeleteModal
+          tenantName={deleteModal.name}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteModal(null)}
+        />
+      )}
 
       <div style={{ position: "relative", maxWidth: 680, margin: "0 auto" }}>
 
@@ -233,20 +275,22 @@ export default function TenantsPage() {
         </div>
 
         {/* BOUTON AJOUTER */}
-        <button onClick={() => setShowForm(!showForm)} style={{ background: INK, color: CREAM, padding: "14px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: body, width: "100%", marginBottom: 16, boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)" }}>
-          {showForm ? "Fermer" : "+ Ajouter un locataire"}
+        <button
+          onClick={() => { resetForm(); setShowForm(!showForm); }}
+          style={{ background: INK, color: CREAM, padding: "14px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: body, width: "100%", marginBottom: 16, boxShadow: "0 8px 20px -8px rgba(26,18,8,0.5)" }}
+        >
+          {showForm && !editingId ? "Fermer" : "+ Ajouter un locataire"}
         </button>
 
-        {/* FORMULAIRE — sans les options d'automatisation */}
+        {/* FORMULAIRE */}
         {showForm && (
           <div style={{ background: "#fff", padding: 22, borderRadius: 20, border: `1px solid ${BORDER}`, boxShadow: "0 18px 40px -28px rgba(120,53,15,0.4)", marginBottom: 20 }}>
             <h2 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 4 }}>
-              {editingIndex !== null ? "Modifier locataire" : "Nouveau locataire"}
+              {editingId ? "Modifier le locataire" : "Nouveau locataire"}
             </h2>
             <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16 }}>
-              Les options d'automatisation (relance, quittance) se configurent dans la fiche du locataire.
+              Les options d'automatisation se configurent dans la fiche du locataire.
             </p>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { placeholder: "Nom", value: name, onChange: setName },
@@ -264,13 +308,11 @@ export default function TenantsPage() {
                   <option key={p.id} value={p.id}>{p.address} — {p.city}</option>
                 ))}
               </select>
-
               <input type="number" min="1" max="31" style={fieldStyle} placeholder="Jour du mois pour l'échéance (ex: 5)" value={rentDueDay} onChange={(e) => setRentDueDay(e.target.value)} />
             </div>
-
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button onClick={editingIndex !== null ? updateTenant : addTenant} style={{ background: INK, color: CREAM, padding: "12px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1 }}>
-                {editingIndex !== null ? "Modifier" : "Ajouter"}
+              <button onClick={editingId ? updateTenant : addTenant} style={{ background: INK, color: CREAM, padding: "12px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1 }}>
+                {editingId ? "Modifier" : "Ajouter"}
               </button>
               <button onClick={resetForm} style={{ background: "transparent", color: INK, padding: "12px 20px", borderRadius: 999, border: `2px solid ${INK}`, cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1 }}>
                 Annuler
@@ -281,10 +323,13 @@ export default function TenantsPage() {
 
         {/* LISTE LOCATAIRES */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filteredTenants.map((t, i) => {
+          {filteredTenants.map((t) => {
             const isPaid = !!payments[t.id]?.is_paid;
             const dueStatus = getDueStatus(t, isPaid);
-            let badgeLabel = "🟢 Payé"; let badgeBg = GREEN_BG; let badgeColor = GREEN;
+
+            let badgeLabel = "🟢 Payé";
+            let badgeBg = GREEN_BG;
+            let badgeColor = GREEN;
             if (!isPaid) {
               if (dueStatus?.type === "late") { badgeLabel = dueStatus.label; badgeBg = RED_BG; badgeColor = RED; }
               else if (dueStatus?.type === "today" || dueStatus?.type === "soon") { badgeLabel = dueStatus.label; badgeBg = AMBER_BG; badgeColor = AMBER; }
@@ -292,41 +337,38 @@ export default function TenantsPage() {
             }
 
             return (
-              <div key={t.id ?? t.email} style={{ background: "#fff", borderRadius: 16, padding: "16px 18px", border: `1px solid ${BORDER}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                  <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK, margin: 0 }}>{t.name}</p>
-                  <p style={{ fontFamily: display, fontWeight: 800, fontSize: 17, color: INK, margin: 0, whiteSpace: "nowrap", marginLeft: 8 }}>{t.rent} €</p>
-                </div>
-                <p style={{ fontSize: 13, color: "#7a684f", margin: "0 0 2px" }}>{t.email}</p>
-                {t.property_address && <p style={{ fontSize: 13, color: MUTE, margin: "0 0 8px" }}>📍 {t.property_address}</p>}
-
-                {/* Badges automatisation */}
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                  <span style={{ display: "inline-block", background: badgeBg, color: badgeColor, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                    {badgeLabel}
-                  </span>
-                  {t.auto_reminder_enabled && (
-                    <span style={{ display: "inline-block", background: AMBER_BG, color: AMBER, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                      🌞 Relance auto
+              <div key={t.id} style={{ background: "#fff", borderRadius: 16, border: `1px solid ${BORDER}`, overflow: "hidden" }}>
+                {/* ZONE CLIQUABLE → fiche locataire */}
+                <Link href={`/tenants/${t.id}`} style={{ textDecoration: "none", display: "block", padding: "16px 18px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK, margin: 0 }}>{t.name}</p>
+                    <p style={{ fontFamily: display, fontWeight: 800, fontSize: 17, color: INK, margin: 0, whiteSpace: "nowrap", marginLeft: 8 }}>{t.rent} €</p>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                    {t.property_address
+                      ? <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>📍 {t.property_address}</p>
+                      : <span />
+                    }
+                    <span style={{ display: "inline-block", background: badgeBg, color: badgeColor, padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {badgeLabel}
                     </span>
-                  )}
-                  {t.auto_receipt_enabled && (
-                    <span style={{ display: "inline-block", background: GREEN_BG, color: GREEN, padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                      📄 Quittance auto
-                    </span>
-                  )}
-                </div>
+                  </div>
+                </Link>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={() => startEdit(i)} style={{ background: CREAM, color: BROWN, padding: "8px 14px", borderRadius: 999, border: `1px solid ${FIELD_BORDER}`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}>
+                {/* ZONE ACTIONS — séparée de la zone cliquable */}
+                <div style={{ display: "flex", gap: 8, padding: "10px 18px 14px", borderTop: `1px solid ${BORDER}` }}>
+                  <button
+                    onClick={(e) => startEdit(t, e)}
+                    style={{ background: CREAM, color: BROWN, padding: "7px 14px", borderRadius: 999, border: `1px solid ${FIELD_BORDER}`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
+                  >
                     ✏️ Modifier
                   </button>
-                  <button onClick={() => deleteTenant(t.id)} style={{ background: RED_BG, color: RED, padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}>
+                  <button
+                    onClick={(e) => { e.preventDefault(); setDeleteModal({ id: t.id, name: t.name }); }}
+                    style={{ background: RED_BG, color: RED, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
+                  >
                     🗑 Supprimer
                   </button>
-                  <Link href={`/tenants/${t.id}`} style={{ background: INK, color: CREAM, padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none", display: "inline-block" }}>
-                    📂 Voir le dossier
-                  </Link>
                 </div>
               </div>
             );
@@ -337,3 +379,5 @@ export default function TenantsPage() {
     </main>
   );
 }
+
+
