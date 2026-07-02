@@ -49,6 +49,9 @@ const DOCUMENT_TYPES = [
   { value: "Certificat d'assurance", label: "🛡️ Certificat d'assurance" },
   { value: "Pièce d'identité", label: "🪪 Pièce d'identité" },
   { value: "Justificatif de revenus", label: "💰 Justificatif de revenus" },
+  { value: "Acte de cautionnement", label: "✍️ Acte de cautionnement" },
+  { value: "Pièce d'identité (garant)", label: "🪪 Pièce d'identité (garant)" },
+  { value: "Justificatif de revenus (garant)", label: "💰 Justificatif de revenus (garant)" },
   { value: "Autre", label: "📝 Autre" },
 ];
 
@@ -108,8 +111,16 @@ export default function TenantPage() {
   const [activeTab, setActiveTab] = useState<"infos" | "auto" | "historique" | "documents">("infos");
   const [modalVisible, setModalVisible] = useState(false);
   const [pendingReceiptData, setPendingReceiptData] = useState<{ pdfUrl: string; receiptId: string } | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => { fetchAll(); }, [params.id]);
+
+  // On initialise le brouillon de note une seule fois par locataire, pour ne pas
+  // écraser ce que l'utilisateur est en train de taper à chaque re-fetch du tenant.
+  useEffect(() => {
+    if (tenant) setNoteDraft(tenant.notes || "");
+  }, [tenant?.id]);
 
   async function fetchAll() {
     await fetchTenant();
@@ -209,6 +220,19 @@ export default function TenantPage() {
     if (!error) setTenant((prev: any) => ({ ...prev, reminder_days: newDays }));
     else toast.error("Impossible de modifier les jours de relance.");
     setUpdatingReminderDays(false);
+  }
+
+  // ── NOUVEAU : enregistrer la note libre du locataire ──
+  async function saveNote() {
+    setSavingNote(true);
+    const { error } = await supabase.from("tenants").update({ notes: noteDraft }).eq("id", tenant.id);
+    if (!error) {
+      setTenant((prev: any) => ({ ...prev, notes: noteDraft }));
+      toast.success("Note enregistrée.");
+    } else {
+      toast.error("Impossible d'enregistrer la note.");
+    }
+    setSavingNote(false);
   }
 
   async function generateReceipt(paymentId: string) {
@@ -490,6 +514,8 @@ export default function TenantPage() {
                 )}
               </div>
 
+              
+
               {/* ACTIONS */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {/* Marquer payé */}
@@ -530,6 +556,51 @@ export default function TenantPage() {
               </div>
             </div>
           )}
+
+          {/* BLOC NOTE */}
+              <div style={{ background: "#fff", borderRadius: 16, padding: "18px 20px", marginBottom: 16, border: `1px solid ${BORDER}` }}>
+                <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600, marginBottom: 10 }}>📝 Note</p>
+                <textarea
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Ajoutez une information utile sur ce locataire (garant, remarque, historique...)"
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    border: `2px solid ${FIELD_BORDER}`,
+                    background: FIELD_BG,
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    fontSize: 14,
+                    color: INK,
+                    fontFamily: body,
+                    outline: "none",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                  }}
+                />
+                {noteDraft !== (tenant.notes || "") && (
+                  <button
+                    onClick={saveNote}
+                    disabled={savingNote}
+                    style={{
+                      marginTop: 10,
+                      background: INK,
+                      color: CREAM,
+                      border: "none",
+                      borderRadius: 999,
+                      padding: "8px 18px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: body,
+                      opacity: savingNote ? 0.6 : 1,
+                    }}
+                  >
+                    {savingNote ? "Enregistrement..." : "Enregistrer la note"}
+                  </button>
+                )}
+              </div>
 
           {/* ───────── ONGLET : AUTOMATISATION ───────── */}
           {activeTab === "auto" && (
@@ -698,10 +769,3 @@ export default function TenantPage() {
     </main>
   );
 }
-
-
-
-
-
-
-

@@ -114,7 +114,8 @@ export default function TenantsPage() {
     const { data: userData } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("tenants").select("*").eq("user_id", userData.user?.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .eq("is_archived", false);
     if (error) { console.log(error); return; }
     setTenants(data || []);
     await fetchPayments(data || []);
@@ -170,6 +171,14 @@ export default function TenantsPage() {
     if (!error) { await fetchTenants(); resetForm(); toast.success("Locataire modifié !"); }
     else toast.error("Erreur lors de la modification.");
   }
+
+  async function archiveTenant(id: string, e: React.MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  const { error } = await supabase.from("tenants").update({ is_archived: true }).eq("id", id)
+  if (!error) { await fetchTenants(); toast.success("Locataire archivé."); }
+  else toast.error("Erreur lors de l'archivage.")
+}
 
   async function confirmDelete() {
     if (!deleteModal) return;
@@ -364,11 +373,17 @@ export default function TenantsPage() {
                     ✏️ Modifier
                   </button>
                   <button
-                    onClick={(e) => { e.preventDefault(); setDeleteModal({ id: t.id, name: t.name }); }}
-                    style={{ background: RED_BG, color: RED, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
-                  >
-                    🗑 Supprimer
-                  </button>
+                  onClick={(e) => archiveTenant(t.id, e)}
+                  style={{ background: "#fbeccf", color: BROWN, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
+                >
+                  📦 Archiver
+                </button>
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteModal({ id: t.id, name: t.name }); }}
+                  style={{ background: RED_BG, color: RED, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
+                >
+                  🗑 Supprimer
+                </button>
                 </div>
               </div>
             );

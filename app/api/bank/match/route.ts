@@ -7,11 +7,116 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const resend = new Resend(process.env.RESEND_API_KEY!)
+
 const BRIDGE_HEADERS = {
   'Content-Type': 'application/json',
   'Bridge-Version': '2025-01-15',
   'Client-Id': process.env.BRIDGE_CLIENT_ID!,
   'Client-Secret': process.env.BRIDGE_CLIENT_SECRET!,
+}
+
+// Nombre d'échecs consécutifs avant d'alerter le propriétaire par email
+const ERROR_THRESHOLD = 2
+// Délai minimum entre deux emails d'alerte tant que le problème persiste (en jours)
+const RENOTIFY_AFTER_DAYS = 7
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!
+// Confiance IA à partir de laquelle on valide le paiement automatiquement
+const AI_AUTO_CONFIRM_THRESHOLD = 85
+// En dessous de ce seuil, on ignore complètement (pas assez fiable pour même suggérer)
+const AI_SUGGEST_THRESHOLD = 40
+
+// Nettoie un libellé bancaire pour en extraire une "signature" stable d'un mois à l'autre
+// (retire les mois et les chiffres, qui changent, pour ne garder que la structure fixe)
+function cleanSignature(description: string): string {
+  const MONTHS = ['JANV', 'FEVR', 'FEV', 'MARS', 'AVR', 'MAI', 'JUIN', 'JUIL', 'AOUT', 'SEPT', 'OCT', 'NOV', 'DEC']
+  let sig = (description || '').toUpperCase()
+  for (const m of MONTHS) {
+    sig = sig.replace(new RegExp(m, 'g'), '')
+  }
+  sig = sig.replace(/[0-9]/g, '')
+  sig = sig.replace(/\s+/g, ' ').trim()
+  return sig
+}
+
+async function findLearnedMatch(userId: string, signature: string): Promise<string | null> {
+  if (!signature) return null
+  const { data } = await supabase
+    .from('tenant_payment_patterns')
+    .select('tenant_id')
+    .eq('user_id', userId)
+    .eq('signature', signature)
+    .maybeSingle()
+  return data?.tenant_id || null
+}
+
+async function learnPattern(userId: string, tenantId: string, signature: string) {
+  if (!signature) return
+  await supabase
+    .from('tenant_payment_patterns')
+    .upsert(
+      { user_id: userId, tenant_id: tenantId, signature },
+      { onConflict: 'user_id,tenant_id,signature', ignoreDuplicates: true }
+    )
+}
+
+async function hasExistingPendingMatch(userId: string, transactionId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('pending_bank_matches')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('bridge_transaction_id', transactionId)
+    .maybeSingle()
+  return !!data
+}
+
+async function askAiForMatch(
+  transaction: { description: string; amount: number; date: string },
+  tenants: { id: string; name: string; rent: number }[]
+): Promise<{ tenant_id: string | null; confidence: number; reason: string }> {
+  const tenantList = tenants.map(t => `- id: ${t.id}, nom: ${t.name}, loyer: ${t.rent}€`).join('\n')
+
+  const systemPrompt = `Tu aides à identifier quel locataire correspond à un virement bancaire pour une application de gestion locative française. Réponds UNIQUEMENT avec un objet JSON, sans texte avant ni après, exactement au format :
+{"tenant_id": "uuid-ou-null", "confidence": 0-100, "reason": "explication courte en français"}
+
+Règles :
+- "tenant_id" doit être l'id exact d'un des locataires listés ci-dessous, ou null si aucun ne correspond raisonnablement.
+- "confidence" est ton niveau de certitude de 0 à 100.
+- Prends en compte : le montant (les loyers peuvent varier légèrement : frais, arrondis), des fragments de nom dans le libellé, des références d'appartement ou d'adresse si mentionnées.
+- Si plusieurs locataires sont plausibles, choisis le plus probable et baisse la confiance en conséquence plutôt que de renvoyer null.`
+
+  const userPrompt = `Locataires possibles :\n${tenantList}\n\nVirement à identifier :\n- Libellé : "${transaction.description}"\n- Montant : ${transaction.amount}€\n- Date : ${transaction.date}`
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    })
+
+    const data = await res.json()
+    const text = data?.content?.[0]?.text || ''
+    const parsed = JSON.parse(text.trim())
+
+    return {
+      tenant_id: parsed.tenant_id || null,
+      confidence: Number(parsed.confidence) || 0,
+      reason: parsed.reason || '',
+    }
+  } catch (err: any) {
+    console.error('Erreur appel IA matching:', err.message)
+    return { tenant_id: null, confidence: 0, reason: "Erreur technique lors de l'analyse IA" }
+  }
 }
 
 function matchTransaction(transaction: any, tenants: any[]) {
@@ -106,7 +211,6 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
     const { data: receipt } = await supabase
       .from('receipts').select('id').eq('payment_id', paymentId).single()
 
-    const resend = new Resend(process.env.RESEND_API_KEY!)
     const month = new Date(payment.month).toLocaleDateString('fr-FR', {
       month: 'long', year: 'numeric'
     })
@@ -149,16 +253,120 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
   }
 }
 
+async function notifyBankError(userId: string, fullName: string | null, reason: string): Promise<{ sent: boolean; failReason?: string }> {
+  const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
+  const email = userData?.user?.email
+
+  if (!email) {
+    return { sent: false, failReason: userError?.message || 'Aucun email associé à ce compte' }
+  }
+
+  const { error: mailError } = await resend.emails.send({
+    from: 'noreply@loyafr.com',
+    to: email,
+    subject: '⚠️ Problème avec votre connexion bancaire Loya',
+    html: `
+      <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; max-width: 560px;">
+        <h2 style="color: #1a1208;">Bonjour ${fullName || ''} 👋</h2>
+        <p>Loya n'arrive plus à synchroniser votre compte bancaire depuis ${ERROR_THRESHOLD} tentatives.</p>
+        <p>Concrètement : vos virements de loyer ne sont plus détectés automatiquement, et aucune quittance ne sera générée automatiquement tant que la connexion n'est pas rétablie.</p>
+        <p><strong>Pour corriger ça :</strong> reconnectez votre compte bancaire depuis votre tableau de bord (bouton "Déconnecter" puis "Connecter" dans la tuile bancaire).</p>
+        <a href="https://loyafr.com/dashboard" style="display:inline-block;background:#1a1208;color:#fbf1e3;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:700;">
+          Reconnecter ma banque →
+        </a>
+      </div>
+    `,
+  })
+
+  if (mailError) {
+    return { sent: false, failReason: mailError.message }
+  }
+
+  return { sent: true }
+}
+
+function shouldSendErrorEmail(errorCount: number, lastNotifiedAt: string | null): boolean {
+  if (errorCount < ERROR_THRESHOLD) return false
+  if (!lastNotifiedAt) return true
+
+  const daysSinceNotified = (Date.now() - new Date(lastNotifiedAt).getTime()) / (1000 * 60 * 60 * 24)
+  return daysSinceNotified >= RENOTIFY_AFTER_DAYS
+}
+
+async function handleSyncError(owner: any, errorMessage: string) {
+  const newErrorCount = (owner.bank_sync_error_count || 0) + 1
+
+  await supabase.from('sync_logs').insert({
+    user_id: owner.user_id,
+    synced_at: new Date().toISOString(),
+    transactions_checked: 0,
+    matches_found: 0,
+    payments_confirmed: 0,
+    status: 'error',
+    error_message: errorMessage,
+  })
+
+  const shouldNotify = shouldSendErrorEmail(newErrorCount, owner.bank_error_notified_at)
+
+  let notifiedAt: string | null = null
+  if (shouldNotify) {
+    const result = await notifyBankError(owner.user_id, owner.full_name, errorMessage)
+    if (result.sent) {
+      notifiedAt = new Date().toISOString()
+    } else {
+      // On ne bloque pas le reste du cron pour ça, mais on garde une trace :
+      // sans ça, un proprio pourrait ne jamais être alerté sans que personne ne le sache.
+      console.error(`Notification d'erreur bancaire échouée pour ${owner.user_id} : ${result.failReason}`)
+    }
+  }
+
+  await supabase
+    .from('owner_profiles')
+    .update({
+      bank_sync_error_count: newErrorCount,
+      bank_sync_last_error_at: new Date().toISOString(),
+      ...(notifiedAt ? { bank_error_notified_at: notifiedAt } : {})
+    })
+    .eq('user_id', owner.user_id)
+}
+
+async function handleSyncSuccess(
+  owner: any,
+  transactionsChecked: number,
+  matchesFound: number,
+  paymentsConfirmed: number
+) {
+  await supabase.from('sync_logs').insert({
+    user_id: owner.user_id,
+    synced_at: new Date().toISOString(),
+    transactions_checked: transactionsChecked,
+    matches_found: matchesFound,
+    payments_confirmed: paymentsConfirmed,
+    status: 'success',
+  })
+
+  // Une synchro réussie efface l'historique d'erreurs : on repart de zéro
+  await supabase
+    .from('owner_profiles')
+    .update({
+      last_bank_sync_at: new Date().toISOString(),
+      bank_sync_error_count: 0,
+      bank_sync_last_error_at: null,
+      bank_error_notified_at: null,
+    })
+    .eq('user_id', owner.user_id)
+}
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization')
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
-    // Récupérer tous les propriétaires avec une banque connectée
+
     const { data: owners } = await supabase
       .from('owner_profiles')
-      .select('user_id, bridge_user_uuid')
+      .select('user_id, full_name, bridge_user_uuid, bank_sync_error_count, bank_error_notified_at')
       .not('bridge_user_uuid', 'is', null)
 
     if (!owners || owners.length === 0) {
@@ -168,94 +376,182 @@ export async function GET(req: Request) {
     const allResults: any[] = []
 
     for (const owner of owners) {
-      // Générer un token Bridge pour ce propriétaire
-      const tokenResponse = await fetch(
-        'https://api.bridgeapi.io/v3/aggregation/authorization/token',
-        {
-          method: 'POST',
-          headers: BRIDGE_HEADERS,
-          body: JSON.stringify({ user_uuid: owner.bridge_user_uuid })
-        }
-      )
-      const tokenData = await tokenResponse.json()
-      if (!tokenData.access_token) continue
-
-      // Récupérer les transactions
-      const transactionsResponse = await fetch(
-        'https://api.bridgeapi.io/v3/aggregation/transactions',
-        {
-          headers: {
-            ...BRIDGE_HEADERS,
-            'Authorization': `Bearer ${tokenData.access_token}`,
+      try {
+        // Générer un token Bridge pour ce propriétaire
+        const tokenResponse = await fetch(
+          'https://api.bridgeapi.io/v3/aggregation/authorization/token',
+          {
+            method: 'POST',
+            headers: BRIDGE_HEADERS,
+            body: JSON.stringify({ user_uuid: owner.bridge_user_uuid })
           }
+        )
+        const tokenData = await tokenResponse.json()
+
+        if (!tokenData.access_token) {
+          await handleSyncError(owner, `Token Bridge non obtenu : ${JSON.stringify(tokenData).slice(0, 200)}`)
+          continue
         }
-      )
-      const transactionsData = await transactionsResponse.json()
-      const transactions = transactionsData.resources || []
 
-      // Récupérer les locataires de ce propriétaire uniquement
-      const { data: tenants } = await supabase
-        .from('tenants')
-        .select('id, name, rent')
-        .eq('user_id', owner.user_id)
-
-      if (!tenants || tenants.length === 0) continue
-
-      // Matcher
-      const results = transactions
-        .map((transaction: any) => {
-          const match = matchTransaction(transaction, tenants)
-          if (!match) return null
-          return {
-            transaction: {
-              id: transaction.id,
-              amount: transaction.amount,
-              description: transaction.clean_description,
-              date: transaction.date,
-            },
-            tenant: match.tenant,
-            confidence: match.confidence,
+        // Récupérer les transactions
+        const transactionsResponse = await fetch(
+          'https://api.bridgeapi.io/v3/aggregation/transactions',
+          {
+            headers: {
+              ...BRIDGE_HEADERS,
+              'Authorization': `Bearer ${tokenData.access_token}`,
+            }
           }
-        })
-        .filter(Boolean)
+        )
+        const transactionsData = await transactionsResponse.json()
 
-      // Confirmer les paiements high confidence
-      const confirmedPayments: any[] = []
-      for (const result of results) {
-        if (result.confidence === 'high') {
-          const confirmation = await confirmPayment(
-            result.tenant.id,
-            result.transaction.date
-          )
-          confirmedPayments.push({
-            tenant: result.tenant.name,
-            month: result.transaction.date.substring(0, 7),
-            ...confirmation
+        if (!transactionsResponse.ok) {
+          await handleSyncError(owner, `Erreur récupération transactions : ${JSON.stringify(transactionsData).slice(0, 200)}`)
+          continue
+        }
+
+        const transactions = transactionsData.resources || []
+
+        // Récupérer les locataires de ce propriétaire uniquement
+        const { data: tenants } = await supabase
+          .from('tenants')
+          .select('id, name, rent')
+          .eq('user_id', owner.user_id)
+
+        if (!tenants || tenants.length === 0) {
+          await handleSyncSuccess(owner, transactions.length, 0, 0)
+          continue
+        }
+
+        // Matcher
+        const results = transactions
+          .map((transaction: any) => {
+            const match = matchTransaction(transaction, tenants)
+            if (!match) return null
+            return {
+              transaction: {
+                id: transaction.id,
+                amount: transaction.amount,
+                description: transaction.clean_description,
+                date: transaction.date,
+              },
+              tenant: match.tenant,
+              confidence: match.confidence,
+            }
           })
+          .filter(Boolean)
 
-          if (confirmation.payment && !confirmation.error && confirmation.action !== 'already_paid') {
-            const receipt = await generateAndSendReceipt(
+        // Confirmer les paiements high confidence
+        const confirmedPayments: any[] = []
+        const pendingSuggestions: any[] = []
+
+        for (const result of results) {
+          if (result.confidence === 'high') {
+            const confirmation = await confirmPayment(
               result.tenant.id,
-              confirmation.payment.id
+              result.transaction.date
             )
-            confirmedPayments[confirmedPayments.length - 1].receipt = receipt
+            confirmedPayments.push({
+              tenant: result.tenant.name,
+              month: result.transaction.date.substring(0, 7),
+              ...confirmation
+            })
+
+            if (confirmation.payment && !confirmation.error && confirmation.action !== 'already_paid') {
+              const receipt = await generateAndSendReceipt(
+                result.tenant.id,
+                confirmation.payment.id
+              )
+              confirmedPayments[confirmedPayments.length - 1].receipt = receipt
+            }
+            continue
+          }
+
+          // Cas ambigu (medium/low) : on tente d'abord un pattern déjà appris
+          // (gratuit, instantané), puis on ne sollicite l'IA qu'en dernier recours.
+          if (result.confidence === 'medium' || result.confidence === 'low') {
+            const signature = cleanSignature(result.transaction.description)
+            const learnedTenantId = await findLearnedMatch(owner.user_id, signature)
+
+            if (learnedTenantId) {
+              const confirmation = await confirmPayment(learnedTenantId, result.transaction.date)
+              confirmedPayments.push({
+                tenant: result.tenant.name,
+                month: result.transaction.date.substring(0, 7),
+                source: 'pattern_appris',
+                ...confirmation
+              })
+              if (confirmation.payment && !confirmation.error && confirmation.action !== 'already_paid') {
+                const receipt = await generateAndSendReceipt(learnedTenantId, confirmation.payment.id)
+                confirmedPayments[confirmedPayments.length - 1].receipt = receipt
+              }
+              continue
+            }
+
+            // Déjà vu (en attente, confirmé ou rejeté) : pas la peine de rappeler l'IA
+            const alreadyTracked = await hasExistingPendingMatch(owner.user_id, result.transaction.id)
+            if (alreadyTracked) continue
+
+            const ai = await askAiForMatch(
+              { description: result.transaction.description, amount: result.transaction.amount, date: result.transaction.date },
+              tenants.map((t: any) => ({ id: t.id, name: t.name, rent: t.rent }))
+            )
+
+            if (ai.tenant_id && ai.confidence >= AI_AUTO_CONFIRM_THRESHOLD) {
+              const confirmation = await confirmPayment(ai.tenant_id, result.transaction.date)
+              const matchedTenant = tenants.find((t: any) => t.id === ai.tenant_id)
+              confirmedPayments.push({
+                tenant: matchedTenant?.name || ai.tenant_id,
+                month: result.transaction.date.substring(0, 7),
+                source: 'ia',
+                ai_reason: ai.reason,
+                ...confirmation
+              })
+              if (confirmation.payment && !confirmation.error && confirmation.action !== 'already_paid') {
+                const receipt = await generateAndSendReceipt(ai.tenant_id, confirmation.payment.id)
+                confirmedPayments[confirmedPayments.length - 1].receipt = receipt
+                await learnPattern(owner.user_id, ai.tenant_id, signature)
+              }
+            } else if (ai.tenant_id && ai.confidence >= AI_SUGGEST_THRESHOLD) {
+              await supabase.from('pending_bank_matches').upsert(
+                {
+                  user_id: owner.user_id,
+                  tenant_id: ai.tenant_id,
+                  bridge_transaction_id: result.transaction.id,
+                  amount: result.transaction.amount,
+                  transaction_date: result.transaction.date,
+                  raw_description: result.transaction.description,
+                  cleaned_signature: signature,
+                  ai_confidence: ai.confidence,
+                  ai_reason: ai.reason,
+                  status: 'pending',
+                },
+                { onConflict: 'user_id,bridge_transaction_id', ignoreDuplicates: true }
+              )
+              pendingSuggestions.push({ tenant_id: ai.tenant_id, confidence: ai.confidence })
+            }
+            // En dessous du seuil de suggestion : on ignore, comme avant l'IA.
           }
         }
+
+        const confirmedCount = confirmedPayments.filter(p => p.action !== 'already_paid').length
+
+        await handleSyncSuccess(owner, transactions.length, results.length, confirmedCount)
+
+        allResults.push({
+          owner_id: owner.user_id,
+          total_transactions: transactions.length,
+          matches_found: results.length,
+          confirmed: confirmedPayments,
+          pending_ai_suggestions: pendingSuggestions.length,
+        })
+
+      } catch (ownerError: any) {
+        // On isole l'erreur à ce propriétaire : les autres propriétaires
+        // continuent d'être traités même si celui-ci plante.
+        console.error(`Erreur sync propriétaire ${owner.user_id}:`, ownerError)
+        await handleSyncError(owner, ownerError.message || 'Erreur inconnue')
       }
-
-      allResults.push({
-        owner_id: owner.user_id,
-        total_transactions: transactions.length,
-        matches_found: results.length,
-        confirmed: confirmedPayments
-      })
-
-      // Mettre à jour la date de dernière synchro
-    await supabase
-    .from('owner_profiles')
-    .update({ last_bank_sync_at: new Date().toISOString() })
-    .eq('user_id', owner.user_id)
-
     }
 
     return NextResponse.json({ results: allResults })

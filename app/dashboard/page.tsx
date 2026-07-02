@@ -34,6 +34,8 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 16,
   padding: 20,
   textDecoration: "none",
+  minHeight: 180,
+  boxSizing: "border-box",
 };
 
 const chipStyle: React.CSSProperties = {
@@ -81,6 +83,8 @@ export default function Home() {
   const [bankConnected, setBankConnected] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [bankExpiringSoon, setBankExpiringSoon] = useState(false)
+  const [bankExpired, setBankExpired] = useState(false)
+  const [bankSyncBroken, setBankSyncBroken] = useState(false)
   const [stats, setStats] = useState({
     totalTenants: 0,
     paidCount: 0,
@@ -168,10 +172,9 @@ async function createDefaultProfileIfNeeded(userId: string) {
   async function fetchOwnerName(userId: string) {
   const { data } = await supabase
     .from("owner_profiles")
-    .select("first_name, bridge_user_uuid, last_bank_sync_at, bridge_connected_at")
+    .select("first_name, bridge_user_uuid, last_bank_sync_at, bridge_connected_at, bank_sync_error_count")
     .eq("user_id", userId)
     .maybeSingle()
-    console.log('data complet:', data)
 
   if (data?.first_name && data.first_name.trim() !== "") {
     setOwnerName(data.first_name)
@@ -181,14 +184,22 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 
   if (data?.bridge_connected_at) {
-  const connectedAt = new Date(data.bridge_connected_at)
-  const expiryDate = new Date(connectedAt)
-  expiryDate.setDate(expiryDate.getDate() + 90)
-  const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  console.log('bridge_connected_at:', data.bridge_connected_at)
-  console.log('daysLeft:', daysLeft)
-  if (daysLeft <= 15) setBankExpiringSoon(true)
-}
+    const connectedAt = new Date(data.bridge_connected_at)
+    const expiryDate = new Date(connectedAt)
+    expiryDate.setDate(expiryDate.getDate() + 90)
+    const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+
+    // Deux états distincts : "bientôt expirée" (proactif) et "déjà expirée" (réactif).
+    // Le second est plus urgent : la synchro a probablement déjà cessé de fonctionner.
+    if (daysLeft > 0 && daysLeft <= 15) setBankExpiringSoon(true)
+    if (daysLeft <= 0) setBankExpired(true)
+  }
+
+  // Signal réel de rupture : la synchro échoue depuis plusieurs tentatives.
+  // Plus fiable qu'une estimation de date, ça vient directement du cron de synchro.
+  if ((data?.bank_sync_error_count || 0) >= 2) {
+    setBankSyncBroken(true)
+  }
 
   if (data?.last_bank_sync_at) {
     setLastSync(data.last_bank_sync_at)
@@ -298,21 +309,13 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 
   async function connectBank() {
-  console.log('1 - fonction appelée')
-  console.log('2 - user:', user)
-  if (!user) {
-    console.log('3 - bloqué car pas de user')
-    return
-  }
-  console.log('4 - avant le fetch')
+  if (!user) return
   const response = await fetch('/api/bank/connect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: user.id })
   })
-  console.log('5 - réponse reçue:', response.status)
   const data = await response.json()
-  console.log('6 - data:', data)
   if (data.connect_url) {
     window.location.href = data.connect_url
   }
@@ -326,23 +329,31 @@ async function disconnectBank() {
     body: JSON.stringify({ userId: user.id })
   })
   setBankConnected(false)
+  setBankExpired(false)
+  setBankExpiringSoon(false)
+  setBankSyncBroken(false)
 }
 
   /* ---------- CONNECTÉ : dashboard ---------- */
   const collectRate =
     stats.totalTenants === 0 ? "—" : Math.round((stats.paidCount / stats.totalTenants) * 100) + "%";
 
+  // Un seul indicateur qui regroupe les deux signaux d'alerte : une date d'expiration
+  // dépassée, ou des échecs de synchro répétés détectés par le cron.
+  const bankBroken = bankExpired || bankSyncBroken;
+  const needsReconnect = bankBroken || bankExpiringSoon;
+
   const tiles = [
     { href: "/profile", icon: "👤", title: "Mon profil", sub: "Infos · Signature · Emails" },
     { href: "/tenants", icon: "👥", title: "Mes locataires", sub: `${stats.totalTenants} locataire${stats.totalTenants > 1 ? "s" : ""}`, tenants: true },
     { href: "/properties", icon: "🏠", title: "Mes biens", sub: `${stats.totalProperties} bien${stats.totalProperties > 1 ? "s" : ""}`, vacant: true },
-    { href: "/documents", icon: "📋", title: "Relances & Quittances", sub: "Relancer · Télécharger · Envoyer" },
+    { href: "/documents", icon: "📋", title: "Vue globale", sub: "Relances · Quittances · Appels" },
     {href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
+    { href: "/export", icon: "📊", title: "Export & Fiscalité", sub: "Télécharger vos données" },
     { href: "/tutorial", icon: "📖", title: "Guide d'utilisation", sub: "Découvrir toutes les fonctionnalités" },
     { href: "/install", icon: "📱", title: "Installer Loya", sub: "Ajouter sur votre écran d'accueil" },
     
   ];
-  console.log('bankConnected:', bankConnected)
   return (
     <main style={{ minHeight: "100vh", background: CREAM, padding: "20px 16px", fontFamily: body }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
@@ -380,6 +391,41 @@ async function disconnectBank() {
           </button>
         </div>
 
+        {/* ALERTE CONNEXION BANCAIRE CASSÉE */}
+        {bankConnected && bankBroken && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 12,
+            border: "1px solid #e53e3e", background: "#fff5f5",
+            borderRadius: 16, padding: 16, marginBottom: 24,
+          }}>
+            <span style={{ fontSize: 18 }}>🏦</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#c53030" }}>
+                Votre connexion bancaire a besoin d'être renouvelée
+              </p>
+              <p style={{ fontSize: 12, fontWeight: 500, color: "#e53e3e", marginTop: 2, marginBottom: 10 }}>
+                Loya ne peut plus synchroniser vos virements de loyer ni générer vos quittances automatiquement tant que ce n'est pas fait.
+              </p>
+              <button
+                onClick={connectBank}
+                style={{
+                  background: INK,
+                  color: CREAM,
+                  border: "none",
+                  borderRadius: 999,
+                  padding: "8px 18px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: body,
+                }}
+              >
+                Renouveler ma connexion →
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ALERTE RETARDS */}
         {stats.lateTenantsNames.length > 0 && (
           <div style={{
@@ -406,48 +452,43 @@ async function disconnectBank() {
           gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
           gap: 14,
           marginBottom: 36,
+          alignItems: "stretch",
         }}>
 
         {tiles.map((t) => (
         t.bank ? (
-        <div key="bank" style={cardStyle}>
+        <div key="bank" style={{ ...cardStyle }}>
           <div style={chipStyle}>🏦</div>
           <p style={tileTitle}>Connexion bancaire</p>
-          <p style={tileSub}>
-            {bankConnected ? "Banque connectée" : "Synchroniser votre banque"}
-          </p>
           {bankConnected ? (
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ ...badge("#e3f3e4", "#1f7a37") }}>
-              ✓ Active
-            </span>
-            {bankExpiringSoon && (
-              <p style={{ fontSize: 11, color: "#b3361f", fontWeight: 700, margin: "4px 0 0" }}>
-                ⚠️ Expire bientôt — cliquez sur "Déconnecter" puis "Connecter"
-              </p>
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8}}>
+            {needsReconnect ? (
+              <>
+                <span style={{ ...badge("#fcece6", "#b3361f"), display: "inline-block", width: "fit-content" }}>
+                  {bankBroken ? "⚠️ Connexion à renouveler" : "⚠️ Expire bientôt"}
+                </span>
+                <button
+                  onClick={connectBank}
+                  style={{
+                    background: ORANGE,
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 999,
+                    padding: '7px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: body,
+                    width: 'fit-content',
+                  }}
+                >
+                  Renouveler ma connexion
+                </button>
+              </>
+            ) : (
+              <span style={{ ...badge("#e3f3e4", "#1f7a37"), display: "inline-block", width: "fit-content" }}>✓ Banque connectée</span>
             )}
-                        {lastSync && (
-              <p style={{ fontSize: 11, color: MUTE, margin: 0 }}>
-                Dernière synchro : {new Date(lastSync).toLocaleDateString('fr-FR', {
-                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                })}
-              </p>
-            )}
-            <button
-              onClick={disconnectBank}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: MUTE,
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: body,
-                textDecoration: 'underline',
-                padding: 0,
-                textAlign: 'left',
-              }}
-            >
+            <button onClick={disconnectBank} style={{ background: 'none', border: 'none', color: MUTE, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: body, textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
               Déconnecter
             </button>
           </div>

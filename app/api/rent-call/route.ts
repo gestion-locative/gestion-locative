@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     const sentEmails: any[] = []
 
     for (const tenant of tenants) {
+      if (!tenant.auto_rent_call_enabled) continue
       if (!tenant.email) continue
 
       const { data: owner } = await supabase

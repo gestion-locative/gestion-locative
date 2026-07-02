@@ -18,6 +18,7 @@ api_key : 1fbeadf5e923b6e221962ee2c262bbdb901e6bc8a450fb9edc6f1e94d75d9431
 
 git add .
 git commit -m "Fix responsive mobile dashboard"
+git push
 
 client id bridge :  sandbox_id_0afc9a7216f945d0b9aedce23cf02f9a
 client secret bridge : sandbox_secret_4PlrPldFf9yJ5UzscjdxZEx0taTBdDIjlN7dAOjVUTZzPuhQnNr4u0sB9HrVqVCv
@@ -27,4 +28,4 @@ mdp compte demo bridge : test123
 
 
 
-git push
+
