@@ -98,7 +98,7 @@ Règles :
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
+        max_tokens: 500,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
@@ -117,7 +117,18 @@ Règles :
       return { tenant_id: null, confidence: 0, reason: 'Réponse IA vide' }
     }
 
-    const parsed = JSON.parse(text.trim())
+    let parsed
+    try {
+      // Au cas où le modèle encadre parfois sa réponse de balises markdown malgré la consigne
+      const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '')
+      parsed = JSON.parse(cleaned)
+    } catch {
+      console.error(
+        `Réponse IA non parseable (stop_reason: ${data.stop_reason}) — texte brut :`,
+        text.slice(0, 500)
+      )
+      return { tenant_id: null, confidence: 0, reason: 'Réponse IA invalide' }
+    }
 
     return {
       tenant_id: parsed.tenant_id || null,
