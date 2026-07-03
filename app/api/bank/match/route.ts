@@ -136,17 +136,21 @@ Règles :
       return { tenant_id: null, confidence: 0, reason: 'Réponse IA invalide' }
     }
 
-    return {
+    const result = {
       tenant_id: parsed.tenant_id || null,
       confidence: Number(parsed.confidence) || 0,
       reason: parsed.reason || '',
     }
+
+    // 🔍 Log temporaire de diagnostic — à retirer une fois le test terminé
+    console.log('Décision IA matching:', JSON.stringify(result))
+
+    return result
   } catch (err: any) {
     console.error('Erreur appel IA matching (Gemini):', err.message)
     return { tenant_id: null, confidence: 0, reason: "Erreur technique lors de l'analyse IA" }
   }
 }
-
 function matchTransaction(transaction: any, tenants: any[]) {
   const description = transaction.clean_description?.toLowerCase() || ''
   const amount = transaction.amount
