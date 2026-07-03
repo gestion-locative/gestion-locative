@@ -24,8 +24,6 @@ const RENOTIFY_AFTER_DAYS = 7
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
 // Vérifie le nom exact du modèle Flash gratuit actuel sur aistudio.google.com si ça échoue un jour
 const GEMINI_MODEL = 'gemini-2.5-flash'
-// Confiance IA à partir de laquelle on valide le paiement automatiquement
-const AI_AUTO_CONFIRM_THRESHOLD = 85
 
 // Nettoie un libellé bancaire pour en extraire une "signature" stable d'un mois à l'autre
 // (retire les mois et les chiffres, qui changent, pour ne garder que la structure fixe)
@@ -74,21 +72,21 @@ async function hasExistingPendingMatch(userId: string, transactionId: string): P
 async function askAiForMatch(
   transaction: { description: string; amount: number; date: string },
   tenants: { id: string; name: string; rent: number }[]
-): Promise<{ tenant_id: string | null; confidence: number; reason: string }> {
+): Promise<{ plausible: boolean; tenant_id: string | null; reason: string }> {
   const tenantList = tenants.map(t => `- id: ${t.id}, nom: ${t.name}, loyer: ${t.rent}€`).join('\n')
 
-  const systemPrompt = `Tu aides à identifier quel locataire correspond à un virement bancaire pour une application de gestion locative française. Réponds uniquement avec un objet JSON au format :
-{"tenant_id": "uuid-ou-null", "confidence": 0-100, "reason": "explication courte en français"}
+  const systemPrompt = `Tu aides à filtrer les virements bancaires reçus par un propriétaire, pour une application de gestion locative française. Ta seule tâche : déterminer si un virement PEUT PLAUSIBLEMENT être le paiement d'un loyer par l'un de ses locataires, ou si c'est clairement autre chose (remboursement d'assurance, vente d'occasion, virement d'un proche, salaire, etc.).
+
+Réponds uniquement avec un objet JSON au format :
+{"plausible": true ou false, "tenant_id": "uuid-ou-null", "reason": "explication courte en français"}
 
 Règles :
-- "tenant_id" doit être l'id exact d'un des locataires listés, ou null si aucun ne correspond raisonnablement.
-- "confidence" est ton niveau de certitude de 0 à 100.
-- Prends en compte : le montant (les loyers peuvent varier légèrement : frais, arrondis), des fragments de nom dans le libellé, des références d'appartement ou d'adresse si mentionnées.
-- IMPORTANT : si le libellé contient un nom de personne clairement différent de celui du locataire suggéré (par exemple "Mr John Doe" alors qu'aucun locataire ne s'appelle ainsi), c'est un signal NÉGATIF qui doit baisser significativement la confiance — ce n'est pas neutre. Un montant qui correspond par coïncidence à un virement destiné à quelqu'un d'autre est un risque réel (loyer d'un tiers, remboursement personnel, etc.).
-- Un montant qui correspond sans AUCUN nom du tout dans le libellé (ex: "LOYER OCT") est un candidat plus fiable qu'un montant qui correspond MAIS avec un nom différent explicitement présent.
-- Si plusieurs locataires sont plausibles, choisis le plus probable et baisse la confiance en conséquence plutôt que de renvoyer null.`
+- "plausible": true si ce virement pourrait raisonnablement être un loyer d'un des locataires listés (même avec un doute), false si le libellé indique clairement autre chose (ex: "REMBOURSEMENT SECU", "VENTE VINTED", "SALAIRE", virement d'une personne manifestement non liée à la location).
+- "tenant_id" : si plausible=true, indique le locataire le plus probable même si tu n'es pas certain. Ne renvoie null que si plausible=false, ou si plausible=true mais que tu ne peux vraiment pas départager entre plusieurs locataires.
+- Un montant qui correspond exactement au loyer d'un locataire est presque toujours plausible=true, même si le nom dans le libellé ne correspond à personne — sauf si le libellé indique explicitement une autre nature de transaction (voir ci-dessus).
+- Le but n'est pas de décider avec certitude qui a payé, juste d'écarter les virements qui n'ont manifestement rien à voir avec un loyer. Le propriétaire tranchera lui-même les cas ambigus.`
 
-  const userPrompt = `Locataires possibles :\n${tenantList}\n\nVirement à identifier :\n- Libellé : "${transaction.description}"\n- Montant : ${transaction.amount}€\n- Date : ${transaction.date}`
+  const userPrompt = `Locataires possibles :\n${tenantList}\n\nVirement à analyser :\n- Libellé : "${transaction.description}"\n- Montant : ${transaction.amount}€\n- Date : ${transaction.date}`
 
   try {
     const res = await fetch(
@@ -102,12 +100,8 @@ Règles :
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          // Force une sortie JSON syntaxiquement valide, garanti par Gemini
           generationConfig: {
             responseMimeType: 'application/json',
-            // Marge large : le JSON attendu fait ~150 tokens, mais thinkingBudget:0 est parfois
-            // ignoré par Gemini (bug connu). On ne paie que ce qui est réellement généré,
-            // donc un plafond haut ne coûte rien de plus s'il n'est pas atteint.
             maxOutputTokens: 2000,
             thinkingConfig: { thinkingBudget: 0 },
           },
@@ -119,13 +113,13 @@ Règles :
 
     if (!res.ok) {
       console.error(`Erreur API Gemini (status ${res.status}):`, JSON.stringify(data))
-      return { tenant_id: null, confidence: 0, reason: 'Erreur API IA' }
+      return { plausible: false, tenant_id: null, reason: 'Erreur API IA' }
     }
 
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     if (!text) {
       console.error('Réponse Gemini vide ou inattendue:', JSON.stringify(data))
-      return { tenant_id: null, confidence: 0, reason: 'Réponse IA vide' }
+      return { plausible: false, tenant_id: null, reason: 'Réponse IA vide' }
     }
 
     let parsed
@@ -133,12 +127,12 @@ Règles :
       parsed = JSON.parse(text.trim())
     } catch {
       console.error('Réponse Gemini non parseable — texte brut :', text.slice(0, 500))
-      return { tenant_id: null, confidence: 0, reason: 'Réponse IA invalide' }
+      return { plausible: false, tenant_id: null, reason: 'Réponse IA invalide' }
     }
 
     const result = {
+      plausible: parsed.plausible === true,
       tenant_id: parsed.tenant_id || null,
-      confidence: Number(parsed.confidence) || 0,
       reason: parsed.reason || '',
     }
 
@@ -148,7 +142,7 @@ Règles :
     return result
   } catch (err: any) {
     console.error('Erreur appel IA matching (Gemini):', err.message)
-    return { tenant_id: null, confidence: 0, reason: "Erreur technique lors de l'analyse IA" }
+    return { plausible: false, tenant_id: null, reason: "Erreur technique lors de l'analyse IA" }
   }
 }
 function matchTransaction(transaction: any, tenants: any[]) {
@@ -536,25 +530,10 @@ export async function GET(req: Request) {
               tenants.map((t: any) => ({ id: t.id, name: t.name, rent: t.rent }))
             )
 
-            if (ai.tenant_id && ai.confidence >= AI_AUTO_CONFIRM_THRESHOLD) {
-              const confirmation = await confirmPayment(ai.tenant_id, result.transaction.date)
-              const matchedTenant = tenants.find((t: any) => t.id === ai.tenant_id)
-              confirmedPayments.push({
-                tenant: matchedTenant?.name || ai.tenant_id,
-                month: result.transaction.date.substring(0, 7),
-                source: 'ia',
-                ai_reason: ai.reason,
-                ...confirmation
-              })
-              if (confirmation.payment && !confirmation.error && confirmation.action !== 'already_paid') {
-                const receipt = await generateAndSendReceipt(ai.tenant_id, confirmation.payment.id)
-                confirmedPayments[confirmedPayments.length - 1].receipt = receipt
-                await learnPattern(owner.user_id, ai.tenant_id, signature)
-              }
-            } else if (ai.tenant_id) {
-              // Tant qu'un locataire est proposé, on montre la suggestion au proprio —
-              // même à faible confiance. Le coût de la lui montrer est nul ; celui de la
-              // cacher silencieusement est un paiement qui pourrait passer inaperçu.
+            // L'IA ne sert plus qu'à filtrer le bruit évident (remboursements, ventes, salaires...) —
+            // elle ne décide plus jamais d'auto-valider un paiement. Tout ce qu'elle juge "plausible"
+            // atterrit systématiquement en attente de validation manuelle, sans seuil ni pourcentage.
+            if (ai.plausible && ai.tenant_id) {
               await supabase.from('pending_bank_matches').upsert(
                 {
                   user_id: owner.user_id,
@@ -564,16 +543,15 @@ export async function GET(req: Request) {
                   transaction_date: result.transaction.date,
                   raw_description: result.transaction.description,
                   cleaned_signature: signature,
-                  ai_confidence: ai.confidence,
                   ai_reason: ai.reason,
                   status: 'pending',
                 },
                 { onConflict: 'user_id,bridge_transaction_id', ignoreDuplicates: true }
               )
-              pendingSuggestions.push({ tenant_id: ai.tenant_id, confidence: ai.confidence })
+              pendingSuggestions.push({ tenant_id: ai.tenant_id })
             }
-            // Seul un vrai "aucun locataire ne correspond" (tenant_id: null) est ignoré :
-            // là, il n'y a réellement rien de plausible à proposer.
+            // Ignoré uniquement si l'IA juge que ça n'a manifestement rien à voir avec un loyer
+            // (plausible=false), ou si plausible=true mais qu'aucun locataire ne peut être départagé.
           }
         }
 
