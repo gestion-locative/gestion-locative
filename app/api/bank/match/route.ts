@@ -86,6 +86,8 @@ Règles :
 - "tenant_id" doit être l'id exact d'un des locataires listés, ou null si aucun ne correspond raisonnablement.
 - "confidence" est ton niveau de certitude de 0 à 100.
 - Prends en compte : le montant (les loyers peuvent varier légèrement : frais, arrondis), des fragments de nom dans le libellé, des références d'appartement ou d'adresse si mentionnées.
+- IMPORTANT : si le libellé contient un nom de personne clairement différent de celui du locataire suggéré (par exemple "Mr John Doe" alors qu'aucun locataire ne s'appelle ainsi), c'est un signal NÉGATIF qui doit baisser significativement la confiance — ce n'est pas neutre. Un montant qui correspond par coïncidence à un virement destiné à quelqu'un d'autre est un risque réel (loyer d'un tiers, remboursement personnel, etc.).
+- Un montant qui correspond sans AUCUN nom du tout dans le libellé (ex: "LOYER OCT") est un candidat plus fiable qu'un montant qui correspond MAIS avec un nom différent explicitement présent.
 - Si plusieurs locataires sont plausibles, choisis le plus probable et baisse la confiance en conséquence plutôt que de renvoyer null.`
 
   const userPrompt = `Locataires possibles :\n${tenantList}\n\nVirement à identifier :\n- Libellé : "${transaction.description}"\n- Montant : ${transaction.amount}€\n- Date : ${transaction.date}`
@@ -105,10 +107,10 @@ Règles :
           // Force une sortie JSON syntaxiquement valide, garanti par Gemini
           generationConfig: {
             responseMimeType: 'application/json',
-            maxOutputTokens: 500,
-            // Désactive le mode "réflexion" : sans ça, Gemini consomme la quasi-totalité
-            // du budget de tokens à raisonner en interne avant même d'écrire la réponse,
-            // ce qui tronque le JSON avant sa fin. Pas nécessaire pour une classification simple.
+            // Marge large : le JSON attendu fait ~150 tokens, mais thinkingBudget:0 est parfois
+            // ignoré par Gemini (bug connu). On ne paie que ce qui est réellement généré,
+            // donc un plafond haut ne coûte rien de plus s'il n'est pas atteint.
+            maxOutputTokens: 2000,
             thinkingConfig: { thinkingBudget: 0 },
           },
         }),
@@ -223,9 +225,10 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
 
     if (!tenant || !payment) return { error: 'Données manquantes' }
 
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://loyafr.com'
+    // On utilise toujours le domaine de production ici : VERCEL_URL pointe vers l'URL
+    // technique du déploiement, qui peut être protégée par la "Deployment Protection"
+    // de Vercel et renvoyer une page de connexion HTML au lieu de l'API attendue.
+    const baseUrl = 'https://loyafr.com'
 
     const receiptRes = await fetch(`${baseUrl}/api/generate-receipt`, {
       method: 'POST',
