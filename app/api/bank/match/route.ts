@@ -21,7 +21,9 @@ const ERROR_THRESHOLD = 2
 // Délai minimum entre deux emails d'alerte tant que le problème persiste (en jours)
 const RENOTIFY_AFTER_DAYS = 7
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
+// Vérifie le nom exact du modèle Flash gratuit actuel sur aistudio.google.com si ça échoue un jour
+const GEMINI_MODEL = 'gemini-2.5-flash'
 // Confiance IA à partir de laquelle on valide le paiement automatiquement
 const AI_AUTO_CONFIRM_THRESHOLD = 85
 // En dessous de ce seuil, on ignore complètement (pas assez fiable pour même suggérer)
@@ -77,11 +79,11 @@ async function askAiForMatch(
 ): Promise<{ tenant_id: string | null; confidence: number; reason: string }> {
   const tenantList = tenants.map(t => `- id: ${t.id}, nom: ${t.name}, loyer: ${t.rent}€`).join('\n')
 
-  const systemPrompt = `Tu aides à identifier quel locataire correspond à un virement bancaire pour une application de gestion locative française. Réponds UNIQUEMENT avec un objet JSON, sans texte avant ni après, exactement au format :
+  const systemPrompt = `Tu aides à identifier quel locataire correspond à un virement bancaire pour une application de gestion locative française. Réponds uniquement avec un objet JSON au format :
 {"tenant_id": "uuid-ou-null", "confidence": 0-100, "reason": "explication courte en français"}
 
 Règles :
-- "tenant_id" doit être l'id exact d'un des locataires listés ci-dessous, ou null si aucun ne correspond raisonnablement.
+- "tenant_id" doit être l'id exact d'un des locataires listés, ou null si aucun ne correspond raisonnablement.
 - "confidence" est ton niveau de certitude de 0 à 100.
 - Prends en compte : le montant (les loyers peuvent varier légèrement : frais, arrondis), des fragments de nom dans le libellé, des références d'appartement ou d'adresse si mentionnées.
 - Si plusieurs locataires sont plausibles, choisis le plus probable et baisse la confiance en conséquence plutôt que de renvoyer null.`
@@ -89,44 +91,44 @@ Règles :
   const userPrompt = `Locataires possibles :\n${tenantList}\n\nVirement à identifier :\n- Libellé : "${transaction.description}"\n- Montant : ${transaction.amount}€\n- Date : ${transaction.date}`
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    })
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          // Force une sortie JSON syntaxiquement valide, garanti par Gemini
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 500,
+          },
+        }),
+      }
+    )
 
     const data = await res.json()
 
     if (!res.ok) {
-      console.error(`Erreur API Anthropic (status ${res.status}):`, JSON.stringify(data))
+      console.error(`Erreur API Gemini (status ${res.status}):`, JSON.stringify(data))
       return { tenant_id: null, confidence: 0, reason: 'Erreur API IA' }
     }
 
-    const text = data?.content?.[0]?.text || ''
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     if (!text) {
-      console.error('Réponse IA vide ou inattendue:', JSON.stringify(data))
+      console.error('Réponse Gemini vide ou inattendue:', JSON.stringify(data))
       return { tenant_id: null, confidence: 0, reason: 'Réponse IA vide' }
     }
 
     let parsed
     try {
-      // Au cas où le modèle encadre parfois sa réponse de balises markdown malgré la consigne
-      const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '')
-      parsed = JSON.parse(cleaned)
+      parsed = JSON.parse(text.trim())
     } catch {
-      console.error(
-        `Réponse IA non parseable (stop_reason: ${data.stop_reason}) — texte brut :`,
-        text.slice(0, 500)
-      )
+      console.error('Réponse Gemini non parseable — texte brut :', text.slice(0, 500))
       return { tenant_id: null, confidence: 0, reason: 'Réponse IA invalide' }
     }
 
@@ -136,7 +138,7 @@ Règles :
       reason: parsed.reason || '',
     }
   } catch (err: any) {
-    console.error('Erreur appel IA matching:', err.message)
+    console.error('Erreur appel IA matching (Gemini):', err.message)
     return { tenant_id: null, confidence: 0, reason: "Erreur technique lors de l'analyse IA" }
   }
 }
