@@ -105,7 +105,18 @@ Règles :
     })
 
     const data = await res.json()
+
+    if (!res.ok) {
+      console.error(`Erreur API Anthropic (status ${res.status}):`, JSON.stringify(data))
+      return { tenant_id: null, confidence: 0, reason: 'Erreur API IA' }
+    }
+
     const text = data?.content?.[0]?.text || ''
+    if (!text) {
+      console.error('Réponse IA vide ou inattendue:', JSON.stringify(data))
+      return { tenant_id: null, confidence: 0, reason: 'Réponse IA vide' }
+    }
+
     const parsed = JSON.parse(text.trim())
 
     return {
