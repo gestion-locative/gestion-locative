@@ -106,6 +106,10 @@ Règles :
           generationConfig: {
             responseMimeType: 'application/json',
             maxOutputTokens: 500,
+            // Désactive le mode "réflexion" : sans ça, Gemini consomme la quasi-totalité
+            // du budget de tokens à raisonner en interne avant même d'écrire la réponse,
+            // ce qui tronque le JSON avant sa fin. Pas nécessaire pour une classification simple.
+            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       }
