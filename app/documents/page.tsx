@@ -513,7 +513,7 @@ export default function DocumentsPage() {
               <>
                 <div style={{ background: FIELD_BG, border: `1px solid ${FIELD_BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
                   <p style={{ fontSize: 13, color: "#7a684f", lineHeight: 1.6, margin: 0 }}>
-                    Ces virements ont bien été reçus sur votre compte bancaire, mais Loya n'est pas certain de savoir à quel locataire ils correspondent. Vérifiez ci-dessous et confirmez ou corrigez — une fois confirmé, le loyer est marqué payé et la quittance part automatiquement.
+                    Ces virements ont bien été reçus sur votre compte bancaire, mais Loya n'est pas certain de savoir à quel locataire ils correspondent. Vérifiez ci-dessous et confirmez ou corrigez — une fois confirmé, le loyer est marqué payé et la quittance est générée (envoyée automatiquement par email si vous avez activé cette option pour ce locataire, sinon vous pourrez l'envoyer depuis l'onglet Quittances).
                   </p>
                 </div>
                 <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600, marginBottom: 16 }}>

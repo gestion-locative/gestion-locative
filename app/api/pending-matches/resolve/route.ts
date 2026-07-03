@@ -29,6 +29,12 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
 
     const { data: receipt } = await supabase.from('receipts').select('id').eq('payment_id', paymentId).single()
 
+    // La quittance PDF est toujours générée, mais l'envoi par email dépend du toggle
+    // du locataire — cohérent avec le comportement du marquage manuel sur sa fiche.
+    if (!tenant.auto_receipt_enabled) {
+      return { pdf_url: receiptData.url, email_sent: false, skipped_reason: 'auto_receipt_disabled' }
+    }
+
     const month = new Date(payment.month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
     const pdfResponse = await fetch(receiptData.url)
     const pdfBuffer = await pdfResponse.arrayBuffer()
