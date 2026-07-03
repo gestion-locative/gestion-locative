@@ -26,8 +26,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
 const GEMINI_MODEL = 'gemini-2.5-flash'
 // Confiance IA à partir de laquelle on valide le paiement automatiquement
 const AI_AUTO_CONFIRM_THRESHOLD = 85
-// En dessous de ce seuil, on ignore complètement (pas assez fiable pour même suggérer)
-const AI_SUGGEST_THRESHOLD = 40
 
 // Nettoie un libellé bancaire pour en extraire une "signature" stable d'un mois à l'autre
 // (retire les mois et les chiffres, qui changent, pour ne garder que la structure fixe)
@@ -549,7 +547,10 @@ export async function GET(req: Request) {
                 confirmedPayments[confirmedPayments.length - 1].receipt = receipt
                 await learnPattern(owner.user_id, ai.tenant_id, signature)
               }
-            } else if (ai.tenant_id && ai.confidence >= AI_SUGGEST_THRESHOLD) {
+            } else if (ai.tenant_id) {
+              // Tant qu'un locataire est proposé, on montre la suggestion au proprio —
+              // même à faible confiance. Le coût de la lui montrer est nul ; celui de la
+              // cacher silencieusement est un paiement qui pourrait passer inaperçu.
               await supabase.from('pending_bank_matches').upsert(
                 {
                   user_id: owner.user_id,
@@ -567,7 +568,8 @@ export async function GET(req: Request) {
               )
               pendingSuggestions.push({ tenant_id: ai.tenant_id, confidence: ai.confidence })
             }
-            // En dessous du seuil de suggestion : on ignore, comme avant l'IA.
+            // Seul un vrai "aucun locataire ne correspond" (tenant_id: null) est ignoré :
+            // là, il n'y a réellement rien de plausible à proposer.
           }
         }
 
