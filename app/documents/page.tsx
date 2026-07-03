@@ -507,12 +507,17 @@ export default function DocumentsPage() {
             {pendingMatches.length === 0 ? (
               <div style={{ background: GREEN_BG, border: `1px solid #c3e6c8`, borderRadius: 16, padding: 24, textAlign: "center" }}>
                 <p style={{ color: GREEN, fontWeight: 700, fontFamily: display, fontSize: 16 }}>✅ Aucun virement en attente de validation</p>
-                <p style={{ fontSize: 12.5, color: "#5c8a63", marginTop: 6, lineHeight: 1.5 }}>Les virements que l'IA n'arrive pas à identifier avec certitude apparaîtront ici.</p>
+                <p style={{ fontSize: 12.5, color: "#5c8a63", marginTop: 6, lineHeight: 1.5 }}>Quand un virement reçu ne peut pas être identifié avec certitude, il apparaîtra ici pour que vous le confirmiez vous-même.</p>
               </div>
             ) : (
               <>
+                <div style={{ background: FIELD_BG, border: `1px solid ${FIELD_BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: "#7a684f", lineHeight: 1.6, margin: 0 }}>
+                    Ces virements ont bien été reçus sur votre compte bancaire, mais Loya n'est pas certain de savoir à quel locataire ils correspondent. Vérifiez ci-dessous et confirmez ou corrigez — une fois confirmé, le loyer est marqué payé et la quittance part automatiquement.
+                  </p>
+                </div>
                 <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600, marginBottom: 16 }}>
-                  {pendingMatches.length} virement{pendingMatches.length > 1 ? "s" : ""} à confirmer manuellement
+                  {pendingMatches.length} virement{pendingMatches.length > 1 ? "s" : ""} à confirmer
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {pendingMatches.map((m) => (
@@ -529,11 +534,12 @@ export default function DocumentsPage() {
 
                       <div style={{ background: FIELD_BG, border: `1px solid ${FIELD_BORDER}`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
                         <p style={{ fontSize: 12, color: BROWN, fontWeight: 700, margin: 0 }}>
-                          🤖 Suggestion IA : {m.tenants?.name || "locataire non identifié"} ({m.ai_confidence}% de confiance)
+                          Loya pense qu'il s'agit de : {m.tenants?.name || "locataire non identifié"}
                         </p>
                         {m.ai_reason && <p style={{ fontSize: 12, color: "#7a684f", marginTop: 4 }}>{m.ai_reason}</p>}
                       </div>
 
+                      <p style={{ fontSize: 12, color: MUTE, marginBottom: 8 }}>Ce n'est pas le bon locataire ? Corrigez ici avant de confirmer :</p>
                       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                         <select
                           value={reassignTenant[m.id] || m.tenant_id || ""}
@@ -549,14 +555,14 @@ export default function DocumentsPage() {
                           disabled={resolvingId === m.id}
                           style={{ background: GREEN, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: body, padding: "9px 16px", borderRadius: 999, border: "none", cursor: "pointer", opacity: resolvingId === m.id ? 0.5 : 1 }}
                         >
-                          {resolvingId === m.id ? "..." : "✓ Confirmer"}
+                          {resolvingId === m.id ? "..." : "✓ Oui, c'est lui"}
                         </button>
                         <button
                           onClick={() => resolvePendingMatch(m, "reject")}
                           disabled={resolvingId === m.id}
                           style={{ background: "none", border: "none", color: RED, textDecoration: "underline", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: body, padding: 0, opacity: resolvingId === m.id ? 0.5 : 1 }}
                         >
-                          Ce n'est pas lui
+                          Aucun de mes locataires
                         </button>
                       </div>
                     </div>
