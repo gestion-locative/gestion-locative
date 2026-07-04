@@ -296,7 +296,10 @@ export default function DocumentsPage() {
 
         <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: BROWN, marginBottom: 8 }}>Gestion locative</p>
         <h1 style={{ fontFamily: display, fontSize: "clamp(22px, 5vw, 30px)", fontWeight: 800, letterSpacing: "-0.02em", color: INK, marginBottom: 4 }}>📋 Vue globale</h1>
-        <p style={{ fontSize: 14, color: "#7a684f", marginBottom: 24 }}>Toutes vos communications locatives en un endroit.</p>
+        <p style={{ fontSize: 14, color: "#7a684f", marginBottom: 12 }}>Toutes vos communications locatives en un endroit.</p>
+        <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 24, lineHeight: 1.5 }}>
+          🔒 Vos données restent privées : vos informations bancaires, celles de vos locataires, et tous les documents que vous stockez ne sont visibles que par vous. Rien n'est partagé avec d'autres propriétaires ni utilisé à d'autres fins.
+        </p>
 
         {/* ONGLETS */}
         <div style={{ display: "flex", gap: 20, rowGap: 10, marginBottom: 24, borderBottom: `2px solid ${FIELD_BORDER}`, flexWrap: "wrap" }}>
@@ -324,6 +327,9 @@ export default function DocumentsPage() {
         {/* ───────── ONGLET RELANCES ───────── */}
         {activeTab === "relances" && (
           <div>
+            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16, lineHeight: 1.5 }}>
+              Retrouvez ici tous les locataires dont le loyer n'est pas encore marqué payé ce mois-ci, pour relancer un par un ou tous en même temps.
+            </p>
             {unpaidTenants.length === 0 ? (
               <div style={{ background: GREEN_BG, border: `1px solid #c3e6c8`, borderRadius: 16, padding: 24, textAlign: "center" }}>
                 <p style={{ color: GREEN, fontWeight: 700, fontFamily: display, fontSize: 16 }}>🎉 Tous les loyers sont payés ce mois-ci !</p>
@@ -376,6 +382,9 @@ export default function DocumentsPage() {
         {/* ───────── ONGLET QUITTANCES ───────── */}
         {activeTab === "quittances" && (
           <div>
+            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16, lineHeight: 1.5 }}>
+              Historique de toutes vos quittances, générées automatiquement dès qu'un loyer est marqué payé. Filtrez par locataire, mois ou statut d'envoi.
+            </p>
             {receipts.length === 0 ? (
               <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
                 <p style={{ color: "#7a684f", fontWeight: 600 }}>Aucune quittance générée pour le moment.</p>
@@ -450,6 +459,9 @@ export default function DocumentsPage() {
         {/* ───────── ONGLET APPELS DE LOYER ───────── */}
         {activeTab === "appels" && (
           <div>
+            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16, lineHeight: 1.5 }}>
+              L'appel de loyer est un rappel envoyé avant l'échéance, avec votre IBAN — voyez ici qui l'a reçu ce mois-ci et renvoyez-en un si besoin.
+            </p>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
               <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600 }}>
                 {tenants.length} locataire{tenants.length > 1 ? "s" : ""}
@@ -513,7 +525,7 @@ export default function DocumentsPage() {
               <>
                 <div style={{ background: FIELD_BG, border: `1px solid ${FIELD_BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
                   <p style={{ fontSize: 13, color: "#7a684f", lineHeight: 1.6, margin: 0 }}>
-                    Ces virements ont bien été reçus sur votre compte bancaire, mais Loya n'est pas certain de savoir à quel locataire ils correspondent. Vérifiez ci-dessous et confirmez ou corrigez — une fois confirmé, le loyer est marqué payé et la quittance est générée (envoyée automatiquement par email si vous avez activé cette option pour ce locataire, sinon vous pourrez l'envoyer depuis l'onglet Quittances).
+                    Ces virements ont bien été reçus sur votre compte bancaire, mais Loya n'est pas certain de savoir à quel locataire ils correspondent. Vérifiez ci-dessous et confirmez ou corrigez — une fois confirmé, le loyer est marqué payé et la quittance est générée (envoyée automatiquement par email si vous avez activé cette option pour ce locataire, sinon vous pourrez l'envoyer depuis l'onglet Quittances). <strong>Une fois confirmé, Loya retient ce type de virement pour ce locataire — les mois suivants, il sera reconnu automatiquement sans repasser par cette validation.</strong>
                   </p>
                 </div>
                 <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600, marginBottom: 16 }}>
@@ -576,6 +588,9 @@ export default function DocumentsPage() {
         {/* ───────── ONGLET SYNCHRONISATIONS ───────── */}
         {activeTab === "logs" && (
         <div>
+            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16, lineHeight: 1.5 }}>
+              Historique technique de chaque analyse de vos virements bancaires — utile pour vérifier que la synchro tourne bien, indépendamment des paiements qu'elle détecte.
+            </p>
             {syncLogs.length === 0 ? (
             <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
                 <p style={{ color: "#7a684f", fontWeight: 600 }}>Aucune synchronisation bancaire pour le moment.</p>

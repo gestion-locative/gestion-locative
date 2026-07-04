@@ -346,9 +346,9 @@ async function disconnectBank() {
   const tiles = [
     { href: "/profile", icon: "👤", title: "Mon profil", sub: "Infos · Signature · Emails" },
     { href: "/tenants", icon: "👥", title: "Mes locataires", sub: `${stats.totalTenants} locataire${stats.totalTenants > 1 ? "s" : ""}`, tenants: true },
-    { href: "/properties", icon: "🏠", title: "Mes biens", sub: `${stats.totalProperties} bien${stats.totalProperties > 1 ? "s" : ""}`, vacant: true },
     { href: "/documents", icon: "📋", title: "Vue globale", sub: "Relances · Quittances · Appels" },
     {href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
+    { href: "/properties", icon: "🏠", title: "Mes biens", sub: `${stats.totalProperties} bien${stats.totalProperties > 1 ? "s" : ""}`, vacant: true },
     { href: "/export", icon: "📊", title: "Export & Fiscalité", sub: "Télécharger vos données" },
     { href: "/tutorial", icon: "📖", title: "Guide d'utilisation", sub: "Découvrir toutes les fonctionnalités" },
     { href: "/install", icon: "📱", title: "Installer Loya", sub: "Ajouter sur votre écran d'accueil" },

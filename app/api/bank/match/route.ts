@@ -136,8 +136,6 @@ Règles :
       reason: parsed.reason || '',
     }
 
-    // 🔍 Log temporaire de diagnostic — à retirer une fois le test terminé
-    console.log('Décision IA matching:', JSON.stringify(result))
 
     return result
   } catch (err: any) {

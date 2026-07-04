@@ -41,6 +41,17 @@ export async function GET(req: Request) {
       continue;
     }
 
+    // Nombre de jours écoulés depuis l'échéance (ex: échéance le 5, aujourd'hui le 12 → 7 jours)
+    const daysSinceDue = today - Number(tenant.rent_due_day);
+
+    // On ne relance que si ce jour précis fait partie des paliers choisis par le
+    // propriétaire (J, J+3, J+7...) — sans ça, la relance partait tous les jours,
+    // peu importe les réglages choisis dans l'onglet Automatisation.
+    const reminderDays: number[] = tenant.reminder_days || [];
+    if (!reminderDays.includes(daysSinceDue)) {
+      continue;
+    }
+
     // Vérifie le statut de paiement du mois en cours
     const { data: payment } = await supabaseAdmin
       .from("payments")
@@ -53,7 +64,7 @@ export async function GET(req: Request) {
       continue; // déjà payé, on ne relance pas
     }
 
-    // Évite de relancer plusieurs fois le même jour
+    // Évite de relancer plusieurs fois le même jour (garde-fou en cas de double exécution du cron)
     if (tenant.last_reminder_sent_at) {
       const lastSent = new Date(tenant.last_reminder_sent_at);
       const now = new Date();
@@ -83,7 +94,7 @@ export async function GET(req: Request) {
         .update({ last_reminder_sent_at: new Date().toISOString() })
         .eq("id", tenant.id);
 
-      results.push({ tenant: tenant.name, status: "sent" });
+      results.push({ tenant: tenant.name, status: "sent", daysSinceDue });
     } else {
       results.push({ tenant: tenant.name, status: "failed", error: sendError });
     }

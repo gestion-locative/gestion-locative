@@ -554,11 +554,9 @@ export default function TenantPage() {
                   </button>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* BLOC NOTE */}
-              <div style={{ background: "#fff", borderRadius: 16, padding: "18px 20px", marginBottom: 16, border: `1px solid ${BORDER}` }}>
+              {/* BLOC NOTE */}
+              <div style={{ background: "#fff", borderRadius: 16, padding: "18px 20px",marginTop: 24, marginBottom: 16, border: `1px solid ${BORDER}` }}>
                 <p style={{ fontSize: 14, color: "#7a684f", fontWeight: 600, marginBottom: 10 }}>📝 Note</p>
                 <textarea
                   value={noteDraft}
@@ -601,6 +599,9 @@ export default function TenantPage() {
                   </button>
                 )}
               </div>
+
+            </div>
+          )}
 
           {/* ───────── ONGLET : AUTOMATISATION ───────── */}
           {activeTab === "auto" && (
