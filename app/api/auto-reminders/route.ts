@@ -47,7 +47,10 @@ export async function GET(req: Request) {
     // On ne relance que si ce jour précis fait partie des paliers choisis par le
     // propriétaire (J, J+3, J+7...) — sans ça, la relance partait tous les jours,
     // peu importe les réglages choisis dans l'onglet Automatisation.
-    const reminderDays: number[] = tenant.reminder_days || [];
+    // On convertit chaque valeur en nombre avant de comparer : selon comment elles
+    // ont été enregistrées, les valeurs peuvent être stockées comme texte ("3")
+    // plutôt que comme nombre (3), ce qui ferait échouer includes() silencieusement.
+    const reminderDays: number[] = (tenant.reminder_days || []).map((d: any) => Number(d));
     if (!reminderDays.includes(daysSinceDue)) {
       continue;
     }
