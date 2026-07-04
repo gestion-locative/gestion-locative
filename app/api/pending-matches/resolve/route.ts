@@ -17,7 +17,10 @@ async function generateAndSendReceipt(tenantId: string, paymentId: string) {
 
     if (!tenant || !payment) return { error: 'Données manquantes' }
 
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://loyafr.com'
+    // On utilise toujours le domaine de production ici : VERCEL_URL pointe vers l'URL
+    // technique du déploiement, qui peut être protégée par la "Deployment Protection"
+    // de Vercel et renvoyer une page de connexion HTML au lieu de l'API attendue.
+    const baseUrl = 'https://loyafr.com'
 
     const receiptRes = await fetch(`${baseUrl}/api/generate-receipt`, {
       method: 'POST',
