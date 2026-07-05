@@ -124,6 +124,11 @@ export default function ProfilePage() {
 }
 
   async function saveProfile() {
+    if (!lastName.trim() || !firstName.trim() || !address.trim() || !postalCode.trim() || !city.trim()) {
+    toast.error("Merci de remplir tous les champs obligatoires (nom, prénom, adresse, code postal, ville).");
+    return;
+  }
+
     if (iban && !isValidIban(iban)) {
     toast.error("Format IBAN invalide. Il doit commencer par FR suivi de 25 chiffres/lettres.");
     return;
@@ -274,17 +279,20 @@ export default function ProfilePage() {
           <p style={{ fontSize: 14, fontWeight: 500, color: "#7a684f", marginBottom: 24 }}>
             Ces informations apparaîtront sur vos quittances de loyer.
           </p>
+          <p style={{ fontSize: 12.5, fontWeight: 500, color: MUTE, marginBottom: 16, marginTop: -12 }}>
+            * Champs obligatoires
+          </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
               style={inputStyle}
-              placeholder="Nom"
+              placeholder="Nom *"
               value={lastName}
               onChange={(e) => { setLastName(e.target.value); setHasChanges(true); }}
             />
             <input
               style={inputStyle}
-              placeholder="Prénom"
+              placeholder="Prénom *"
               value={firstName}
               onChange={(e) => { setFirstName(e.target.value); setHasChanges(true); }}
             />
@@ -314,7 +322,7 @@ export default function ProfilePage() {
 
             <input
               style={inputStyle}
-              placeholder="Adresse"
+              placeholder="Adresse *"
               value={address}
               onChange={(e) => { setAddress(e.target.value); setHasChanges(true); }}
             />
@@ -323,13 +331,13 @@ export default function ProfilePage() {
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input
                 style={{ ...inputStyle, flex: "1 1 100px", minWidth: "80px" }}
-                placeholder="Code postal"
+                placeholder="Code postal *"
                 value={postalCode}
                 onChange={(e) => { setPostalCode(e.target.value); setHasChanges(true); }}
               />
               <input
                 style={{ ...inputStyle, flex: "2 1 160px", minWidth: "120px" }}
-                placeholder="Ville"
+                placeholder="Ville *"
                 value={city}
                 onChange={(e) => { setCity(e.target.value); setHasChanges(true); }}
               />
@@ -381,17 +389,36 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {/* IBAN */}
+          <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${FIELD_BORDER}` }}>
+            <h2 style={sectionTitle}>💳 IBAN</h2>
+            <p style={helpText}>
+              Utilisé uniquement dans l'email d'appel de loyer, pour indiquer à vos locataires où virer leur paiement. Facultatif — sans IBAN, cette ligne est simplement absente de l'email.
+            </p>
+
+            <input
+              style={{ ...inputStyle, fontSize: 14 }}
+              placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+              value={iban}
+              onChange={(e) => { setIban(e.target.value); setHasChanges(true); }}
+            />
+
+            <div style={{ marginTop: 16 }}>
+              <SaveRow />
+            </div>
+          </div>
+
           {/* EMAILS */}
           <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${FIELD_BORDER}` }}>
             <h2 style={sectionTitle}>✉️ Personnalisation des emails</h2>
+
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>🔁 Email de relance</p>
             <p style={helpText}>
-              Variables disponibles :{" "}
+              Variables :{" "}
               {["{nom_locataire}", "{loyer}", "{mois}", "{nom_proprietaire}"].map((v) => (
                 <code key={v} style={{ fontFamily: mono, fontSize: 11.5, background: CREAM, padding: "1px 6px", borderRadius: 5, color: BROWN, marginRight: 4 }}>{v}</code>
               ))}
             </p>
-
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>🔁 Email de relance</p>
             <input
               style={{ ...inputStyle, marginBottom: 8, fontSize: 14 }}
               placeholder="Objet"
@@ -407,6 +434,12 @@ export default function ProfilePage() {
             />
 
             <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>📄 Email de quittance</p>
+            <p style={helpText}>
+              Variables :{" "}
+              {["{nom_locataire}", "{loyer}", "{mois}", "{nom_proprietaire}"].map((v) => (
+                <code key={v} style={{ fontFamily: mono, fontSize: 11.5, background: CREAM, padding: "1px 6px", borderRadius: 5, color: BROWN, marginRight: 4 }}>{v}</code>
+              ))}
+            </p>
             <input
               style={{ ...inputStyle, marginBottom: 8, fontSize: 14 }}
               placeholder="Objet"
@@ -414,38 +447,20 @@ export default function ProfilePage() {
               onChange={(e) => { setReceiptSubject(e.target.value); setHasChanges(true); }}
             />
             <textarea
-              style={{ ...inputStyle, fontSize: 14, resize: "vertical", lineHeight: 1.5 }}
+              style={{ ...inputStyle, marginBottom: 18, fontSize: 14, resize: "vertical", lineHeight: 1.5 }}
               placeholder="Message"
               rows={6}
               value={receiptBody}
               onChange={(e) => { setReceiptBody(e.target.value); setHasChanges(true); }}
             />
 
-            <div style={{ marginTop: 16 }}>
-              <SaveRow />
-            </div>
-          </div>
-
-          {/* APPEL DE LOYER */}
-          <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${FIELD_BORDER}` }}>
-            <h2 style={sectionTitle}>🏦 Appel de loyer & IBAN</h2>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>📨 Email d'appel de loyer</p>
             <p style={helpText}>
-              Envoyé automatiquement à vos locataires le 1er de chaque mois, avant l'échéance.
-              Variables disponibles :{" "}
+              Variables :{" "}
               {["{nom_locataire}", "{loyer}", "{mois}", "{jour_echeance}", "{iban_ligne}", "{nom_proprietaire}"].map((v) => (
                 <code key={v} style={{ fontFamily: mono, fontSize: 11.5, background: CREAM, padding: "1px 6px", borderRadius: 5, color: BROWN, marginRight: 4 }}>{v}</code>
               ))}
             </p>
-
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>💳 Votre IBAN</p>
-            <input
-              style={{ ...inputStyle, marginBottom: 18, fontSize: 14 }}
-              placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-              value={iban}
-              onChange={(e) => { setIban(e.target.value); setHasChanges(true); }}
-            />
-
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#5c4a2e", marginBottom: 6 }}>📨 Email d'appel de loyer</p>
             <input
               style={{ ...inputStyle, marginBottom: 8, fontSize: 14 }}
               placeholder="Objet"

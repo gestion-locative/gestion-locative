@@ -64,6 +64,8 @@ const tileSub: React.CSSProperties = {
   marginTop: 2,
 };
 
+
+
 function badge(bg: string, color: string): React.CSSProperties {
   return {
     borderRadius: 999,
@@ -94,6 +96,7 @@ export default function Home() {
     collectedAmount: 0,
     pendingAmount: 0,
     lateTenantsNames: [] as string[],
+    pendingMatchesCount: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -218,6 +221,12 @@ async function createDefaultProfileIfNeeded(userId: string) {
       .in("tenant_id", (tenants || []).map((t) => t.id))
       .eq("month", monthKey);
 
+    const { count: pendingMatchesCount } = await supabase
+    .from("pending_bank_matches")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "pending");
+
     const paymentMap: Record<string, any> = {};
     (payments || []).forEach((p) => { paymentMap[p.tenant_id] = p; });
 
@@ -239,6 +248,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
       collectedAmount,
       pendingAmount,
       lateTenantsNames: lateTenants.map((t) => t.name),
+      pendingMatchesCount: pendingMatchesCount || 0,
     });
   }
 
@@ -450,6 +460,42 @@ async function disconnectBank() {
               <p style={{ fontSize: 12, fontWeight: 500, color: "#e53e3e", marginTop: 2 }}>
                 {stats.lateTenantsNames.join(" · ")}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* ALERTE À VALIDER — placée après l'alerte retards, avant les tuiles */}
+        {stats.pendingMatchesCount > 0 && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 12,
+            border: "1px solid #e8590c", background: "#fdf1e7",
+            borderRadius: 16, padding: 16, marginBottom: 24,
+          }}>
+            <span style={{ fontSize: 18 }}>🔍</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#b8460f" }}>
+                {stats.pendingMatchesCount} virement{stats.pendingMatchesCount > 1 ? "s" : ""} à valider
+              </p>
+              <p style={{ fontSize: 12, fontWeight: 500, color: "#c9560f", marginTop: 2, marginBottom: 10 }}>
+                La synchronisation bancaire a détecté {stats.pendingMatchesCount > 1 ? "des paiements probables" : "un paiement probable"} qui attende{stats.pendingMatchesCount > 1 ? "nt" : ""} votre confirmation.
+              </p>
+              <Link
+                href="/documents"
+                style={{
+                  background: ORANGE,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 999,
+                  padding: "8px 18px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  fontFamily: body,
+                  textDecoration: "none",
+                  display: "inline-block",
+                }}
+              >
+                Vérifier maintenant →
+              </Link>
             </div>
           </div>
         )}

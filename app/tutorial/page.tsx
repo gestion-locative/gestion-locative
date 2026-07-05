@@ -10,6 +10,7 @@ const BROWN = "#b45309";
 const MUTE = "#a89372";
 const BORDER = "#efe3cd";
 const FIELD_BORDER = "#e6d6bb";
+const FIELD_BG = "#fdf8ef";
 const GREEN = "#1f7a37";
 const GREEN_BG = "#e3f3e4";
 const BLUE_BG = "#e6f1fb";
@@ -29,9 +30,9 @@ const sections = [
       "Allez sur la page **Mon profil** depuis l'accueil",
       "Renseignez votre nom complet, adresse, code postal et ville — ces infos apparaîtront sur vos quittances",
       "Choisissez votre genre (homme/femme) pour adapter automatiquement la formulation des quittances",
-      "Optionnel : ajoutez une image de votre signature — elle sera intégrée dans vos quittances PDF",
-      "Personnalisez vos emails de relance, quittance et appel de loyer grâce aux variables {nom_locataire}, {loyer}, {mois}, {nom_proprietaire} — remplacées automatiquement à l'envoi",
-      "Renseignez votre **IBAN** dans la section Appel de loyer — il sera inclus automatiquement dans les emails d'appel de loyer envoyés à vos locataires",
+      "Optionnel: joutez une image de votre signature — elle sera intégrée dans vos quittances PDF",
+      "Un modèle par défaut est déjà prêt pour vos emails de relance, quittance et appel de loyer — mais vous pouvez le **personnaliser** si vous le souhaitez, avec les variables {nom_locataire}, {loyer}, {mois}, {nom_proprietaire} remplacées automatiquement à l'envoi",
+      "Optionnel: Renseignez votre **IBAN** dans la section Appel de loyer — il sera inclus automatiquement dans les emails d'appel de loyer envoyés à vos locataires",
       "Cliquez sur **Enregistrer** (le bouton s'active dès qu'une modification est détectée)",
     ],
   },
@@ -43,68 +44,74 @@ const sections = [
       "Depuis l'accueil, cliquez sur **Mes locataires** puis sur **+ Ajouter un locataire**",
       "Renseignez le **nom**, l'**email** (utilisé pour les relances et quittances) et le **téléphone**",
       "Indiquez le **montant du loyer mensuel** — il apparaîtra sur les quittances PDF et dans vos statistiques",
-      "Indiquez le **jour d'échéance** (ex: 5 pour le 5 de chaque mois) — Loya affiche automatiquement un badge 🔴 Retard Xj si le loyer n'est pas payé après cette date",
+      "Indiquez le **jour d'échéance** (ex: 5 pour le 5 de chaque mois) — c'est la date de référence pour tout le reste : Loya affiche un badge 🔴 **Retard Xj** si le loyer n'est pas payé après cette date, et c'est aussi à partir de ce jour que les relances automatiques (**J, J+7, J+15**...) se déclenchent si vous les avez activées",
       "Optionnel : rattachez le locataire à un bien immobilier via le menu déroulant",
       "Une fois ajouté, **cliquez sur la carte du locataire** pour accéder à sa fiche complète avec 4 onglets : Infos & paiement, Automatisation, Historique et Documents",
     ],
   },
+
+  {
+    id: "synchro",
+    emoji: "🏦",
+    title: "3. Synchronisation bancaire",
+    steps: [
+      "Depuis l'accueil, cliquez sur la tuile **Connexion bancaire** puis sur **Connecter** — vous serez redirigé vers une page sécurisée (Bridge) pour connecter votre compte bancaire. Vos identifiants bancaires ne sont jamais stockés par Loya.",
+      "Une fois connecté, Loya analyse vos virements automatiquement chaque jour vers **9h en hiver et 10h en été** — pas besoin d'ouvrir l'application pour que ça fonctionne",
+      "**Si le nom du locataire et le montant correspondent exactement** au virement reçu → le paiement est coché automatiquement, la quittance est générée et envoyée, sans aucune action de votre part",
+      "**Si le libellé bancaire est ambigu** (le montant correspond mais pas le nom, par exemple parce que le virement passe par un tiers, un conjoint, ou une agence) → Loya fait analyser le virement par une IA, qui écarte immédiatement tout ce qui n'a manifestement rien à voir avec un loyer (remboursement, vente, salaire...). Si un doute raisonnable subsiste, le virement apparaît dans l'onglet **🔍 À valider** de la page **Vue globale**, avec le locataire probable et le raisonnement — c'est vous qui tranchez en un clic, l'IA ne décide jamais seule dans les cas ambigus.",
+      "**Une fois que vous confirmez** un virement ambigu une première fois, Loya retient la structure du libellé pour ce locataire — les mois suivants, le même type de virement sera reconnu automatiquement, sans repasser par la validation manuelle",
+      "**⚠️ Lors de votre première connexion bancaire ou à chaque nouveau locataire, pensez à jeter un œil à l'onglet 🔍 À valider de la page Vue globale — c'est là que les virements ambigus vous attendent tant qu'ils n'ont pas été confirmés au moins une fois. Une fois confirmés, ils sont reconnus tout seuls les mois suivants**",
+      "Vous pouvez **déconnecter** votre banque à tout moment depuis la tuile Connexion bancaire sur l'accueil — vos données bancaires sont alors supprimées, pas seulement déliées",
+    ],
+  },
+
   {
     id: "relances",
     emoji: "🔔",
-    title: "3. Envoyer des relances",
+    title: "4. Envoyer des relances",
     steps: [
       "**Relance manuelle** : depuis l'onglet **Infos & paiement** d'un locataire, cliquez sur **Envoyer une relance** — disponible uniquement si le loyer n'est pas encore payé",
       "**Relance groupée** : depuis la page **Vue globale** (onglet Relances), voyez tous les locataires impayés et cliquez sur **Relancer tous** pour envoyer à tout le monde en une action",
-      "**Relance automatique** : depuis l'onglet **Automatisation** d'un locataire, activez la relance auto et choisissez vos paliers (J, J+7, J+15...) — Loya envoie automatiquement sans intervention de votre part, tous les jours à **10h (heure française)**",
-      "Si vous avez plusieurs locataires en retard, vous recevez aussi un **récapitulatif groupé par email**, envoyé vers **10h30**, pour ne pas avoir à ouvrir l'application pour le savoir",
+      "**Relance automatique** : depuis l'onglet **Automatisation** d'un locataire, activez la relance auto et choisissez vos paliers (**J, J+7, J+15**...) — Loya envoie automatiquement, tous les jours vers **10h en hiver et 11h en été**, sans intervention de votre part",
+      "Si vous avez des locataires en retard, vous recevez aussi un **récapitulatif groupé par email** (au maximum un tous les 7 jours), envoyé vers **10h30 en hiver et 11h30 en été**, pour ne pas avoir à ouvrir l'application pour le savoir",
+      "Personnalisez le message et l'objet de l'email depuis Mon profil → section Personnalisation des emails",
       "La date de la dernière relance est visible dans l'onglet **Historique** de chaque fiche locataire",
+      
     ],
   },
   {
     id: "quittances",
     emoji: "📄",
-    title: "4. Gérer les quittances",
+    title: "5. Gérer les quittances",
     steps: [
-      "Les quittances sont générées **automatiquement** dès qu'un loyer est marqué payé",
-      "Depuis l'onglet **Infos & paiement**, cliquez sur **Envoyer la quittance** pour l'envoyer manuellement au locataire — le bouton est grisé si le loyer n'est pas encore payé",
+      "Le PDF de la quittance est **toujours généré** dès qu'un loyer est marqué payé — manuellement ou via la synchronisation bancaire. L'envoi automatique par email au locataire dépend de l'option activée dans l'onglet **Automatisation** de sa fiche. Si vous utilisez la synchronisation bancaire, il n'y a **rien à faire : tout se fait automatiquement dès que le virement est détecté**",
+      "Si vous n'avez pas activé l'envoi automatique, vous pouvez l'envoyer vous-même depuis l'onglet **Infos & paiement** en cliquant sur **Envoyer la quittance** — le bouton est grisé si le loyer n'est pas encore payé",
       "Retrouvez toutes les quittances dans l'onglet **Historique** de chaque fiche : télécharger le PDF, envoyer ou renvoyer par email",
+      "Personnalisez le message et l'objet de l'email depuis Mon profil → section Personnalisation des emails",
       "Depuis la page **Vue globale** (onglet Quittances), retrouvez l'historique complet de toutes vos quittances avec des filtres par locataire et par mois",
     ],
   },
   {
     id: "appel-loyer",
     emoji: "📨",
-    title: "5. Appel de loyer",
+    title: "6. Appel de loyer",
     steps: [
-      "L'appel de loyer est un email envoyé **avant** l'échéance pour rappeler au locataire qu'il doit payer — il inclut le montant et votre IBAN",
+      "L'appel de loyer est un email envoyé avant l'échéance pour rappeler au locataire qu'il doit payer — il inclut le montant et, si vous l'avez renseigné dans votre profil, votre IBAN",
       "**Envoi manuel** : depuis l'onglet **Infos & paiement** d'un locataire, cliquez sur **Envoyer un appel de loyer** — disponible à tout moment",
-      "**Envoi automatique** : depuis l'onglet **Automatisation** d'un locataire, activez l'appel de loyer automatique — Loya envoie automatiquement le 1er de chaque mois, vers **8h-9h (heure française)**",
-      "Personnalisez le message et l'objet de l'email depuis **Mon profil** → section Appel de loyer & IBAN",
+      "**Envoi automatique** : depuis l'onglet **Automatisation** d'un locataire, activez l'appel de loyer automatique — Loya l'envoie automatiquement le **1er de chaque mois**, vers **8h en hiver et 9h en été**",
+      "Personnalisez le message et l'objet de l'email depuis **Mon profil** → section IBAN",
       "La date du dernier appel envoyé est visible dans l'onglet **Historique** de la fiche locataire",
     ],
   },
-  {
-    id: "synchro",
-    emoji: "🏦",
-    title: "6. Synchronisation bancaire",
-    steps: [
-      "Depuis l'accueil, cliquez sur la tuile **Connexion bancaire** puis sur **Connecter** — vous serez redirigé vers une page sécurisée (Bridge) pour connecter votre compte bancaire. Vos identifiants bancaires ne sont jamais stockés par Loya.",
-      "Une fois connecté, Loya analyse vos virements **automatiquement chaque jour vers 9h-10h (heure française)** — pas besoin d'ouvrir l'application pour que ça fonctionne",
-      "**Si le nom du locataire et le montant correspondent exactement** au virement reçu → le paiement est coché automatiquement, la quittance est générée et envoyée, sans aucune action de votre part",
-      "**Si le libellé bancaire est ambigu** (le montant correspond mais pas le nom, par exemple parce que le virement passe par un tiers, un conjoint, ou une agence) → Loya fait analyser le virement par une IA, qui écarte immédiatement tout ce qui n'a manifestement rien à voir avec un loyer (remboursement, vente, salaire...). Si un doute raisonnable subsiste, le virement apparaît dans l'onglet **🔍 À valider** de la page **Vue globale**, avec le locataire probable et le raisonnement — c'est vous qui tranchez en un clic, l'IA ne décide jamais seule dans les cas ambigus.",
-      "**Une fois que vous confirmez** un virement ambigu une première fois, Loya retient la structure du libellé pour ce locataire — les mois suivants, le même type de virement sera reconnu automatiquement, sans repasser par la validation manuelle",
-      "**Si le virement n'a manifestement rien à voir** avec un loyer (achat, remboursement, salaire...), il n'apparaît nulle part et n'encombre pas votre file d'attente",
-      "Vous pouvez **déconnecter** votre banque à tout moment depuis la tuile Connexion bancaire sur l'accueil — vos données bancaires sont alors supprimées, pas seulement déliées",
-    ],
-  },
+  
   {
     id: "paiements",
     emoji: "💰",
     title: "7. Suivre les paiements",
     steps: [
-      "Depuis la fiche d'un locataire (onglet **Infos & paiement**), cliquez sur **Marquer comme payé ce mois** — une quittance PDF est générée automatiquement",
+      "Depuis la fiche d'un locataire (onglet Infos & paiement), cliquez sur Marquer comme payé ce mois — le PDF de la quittance est généré, et si vous avez activé l'automatisation correspondante la quittance est générée et envoyée automatiquement. Si vous utilisez la synchronisation bancaire, il n'y a même pas besoin de cliquer sur Marquer comme payé : tout se fait automatiquement dès que le virement est détecté",
       "Le statut se **réinitialise automatiquement chaque 1er du mois** — vous n'avez rien à faire en début de mois",
-      "Si vous oubliez un mois, allez dans l'onglet **Historique** de la fiche — vous pouvez corriger le statut de n'importe quel mois passé en cliquant dessus",
+      "Si vous oubliez de marquer un mois, ou si un locataire paie en retard, allez dans l'onglet **Historique** de la fiche — vous pouvez corriger le statut de n'importe quel mois passé en cliquant dessus, ce qui génère aussi la quittance correspondante",
       "Les **statistiques** (montant encaissé, taux d'encaissement, retards) se mettent à jour en temps réel sur la page d'accueil",
       "Un **badge de retard** s'affiche automatiquement sur la liste des locataires dès que la date d'échéance est dépassée sans paiement",
     ],
@@ -115,10 +122,10 @@ const sections = [
     title: "8. Vue globale — tout centralisé au même endroit",
     steps: [
       "Depuis l'accueil, cliquez sur la tuile **Vue globale** — cette page regroupe toutes vos communications locatives en un seul endroit, avec 5 onglets",
-      "**🔔 Relances** : liste tous les locataires actuellement impayés, avec un bouton **Relancer tous** pour envoyer une relance groupée en un clic",
+      "**🔔 Relances** : liste tous les locataires actuellement impayés, avec un bouton **Relancer tous** pour envoyer une relance groupée en un clic — c'est aussi cette liste qui déclenche le bandeau d'alerte sur votre tableau de bord",
       "**📄 Quittances** : historique complet de toutes vos quittances (envoyées ou non), avec des filtres par locataire, par mois et par statut d'envoi",
       "**📨 Appels de loyer** : voyez qui a reçu son appel de loyer ce mois-ci, et renvoyez-en un manuellement si besoin",
-      "**🔍 À valider** : c'est ici qu'apparaissent les virements bancaires ambigus détectés par l'IA (voir la section Synchronisation bancaire ci-dessus) — vous confirmez ou corrigez le locataire suggéré en un clic, et Loya s'en souvient pour les mois suivants",
+      "**🔍 À valider** : c'est ici qu'apparaissent les virements bancaires ambigus détectés par l'IA (voir la section Synchronisation bancaire ci-dessus) — vous confirmez ou corrigez le locataire suggéré en un clic, et Loya s'en souvient pour les mois suivants. Un bandeau sur le tableau de bord vous prévient dès qu'un virement y attend votre validation",
       "**🏦 Synchronisations** : historique technique de chaque exécution de la synchro bancaire (nombre de transactions vérifiées, correspondances trouvées) — utile si vous voulez vérifier que tout fonctionne normalement",
     ],
   },
@@ -148,92 +155,89 @@ const sections = [
   },
 ];
 
-const autoScenarios = [
+const configProfiles = [
   {
-    group: "Sans synchronisation bancaire",
-    items: [
-      {
-        scenario: "Tout désactivé — vous gérez tout manuellement",
-        tags: [{ label: "Banque ❌", type: "off" }, { label: "Relance auto ❌", type: "off" }, { label: "Quittance auto ❌", type: "off" }, { label: "Appel loyer ❌", type: "off" }],
-        results: [{ label: "Rien ne se passe", type: "gray" }],
-      },
-      {
-        scenario: "Relance auto activée — email envoyé si loyer en retard",
-        tags: [{ label: "Banque ❌", type: "off" }, { label: "Relance auto ✓", type: "on" }],
-        results: [{ label: "Relance envoyée automatiquement ✓", type: "green" }, { label: "Paiement à cocher vous-même", type: "orange" }],
-      },
-      {
-        scenario: "Appel de loyer auto — email avec IBAN le 1er du mois",
-        tags: [{ label: "Banque ❌", type: "off" }, { label: "Appel loyer auto ✓", type: "on" }],
-        results: [{ label: "Appel de loyer envoyé automatiquement ✓", type: "green" }, { label: "Paiement à cocher vous-même", type: "orange" }],
-      },
-      {
-        scenario: "Quittance auto activée seule",
-        tags: [{ label: "Banque ❌", type: "off" }, { label: "Quittance auto ✓", type: "on" }],
-        results: [{ label: "Paiement à cocher vous-même", type: "orange" }, { label: "Quittance envoyée automatiquement dès que coché ✓", type: "green" }],
-      },
-      {
-        scenario: "Tout activé sauf banque — flow complet sans banque",
-        tags: [{ label: "Banque ❌", type: "off" }, { label: "Appel loyer ✓", type: "on" }, { label: "Relance auto ✓", type: "on" }, { label: "Quittance auto ✓", type: "on" }],
-        results: [{ label: "Appel de loyer envoyé automatiquement ✓", type: "green" }, { label: "Relance envoyée automatiquement si retard ✓", type: "green" }, { label: "Paiement à cocher vous-même", type: "orange" }],
-      },
+    id: "manuel",
+    emoji: "🔧",
+    title: "Manuel",
+    subtitle: "Vous gardez le contrôle total",
+    toggles: [
+      { label: "Banque ❌", type: "off" },
+      { label: "Relance auto ❌", type: "off" },
+      { label: "Quittance auto ❌", type: "off" },
+      { label: "Appel loyer auto ❌", type: "off" },
     ],
+    daily: [
+      "Vous cochez chaque loyer payé vous-même, dans la fiche du locataire",
+      "Vous envoyez les relances et les appels de loyer à la main",
+      "Vous envoyez chaque quittance manuellement",
+    ],
+    goodFor: "Idéal si vous avez peu de locataires et préférez tout vérifier vous-même",
   },
   {
-    group: "Avec synchronisation bancaire",
-    items: [
-      {
-        scenario: "Virement reconnu (nom + montant identiques) — tout se fait automatiquement",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Match exact ✓", type: "bank" }],
-        results: [{ label: "Paiement coché automatiquement ✓", type: "green" }, { label: "Quittance envoyée automatiquement ✓", type: "green" }],
-      },
-      {
-        scenario: "Virement ambigu (ex: montant correspond mais pas le nom) — l'IA filtre, vous confirmez",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Match ambigu 🔍", type: "bank" }],
-        results: [{ label: "Suggestion créée dans « À valider »", type: "blue" }, { label: "Confirmation manuelle requise", type: "orange" }],
-      },
-      {
-        scenario: "Même locataire, virement similaire le mois suivant — Loya a appris",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Déjà confirmé un mois précédent", type: "bank" }],
-        results: [{ label: "Reconnu et coché automatiquement (appris) ✓", type: "green" }],
-      },
-      {
-        scenario: "Virement détecté mais loyer déjà coché manuellement",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Déjà payé ✓", type: "on" }],
-        results: [{ label: "Rien ne se passe (déjà traité)", type: "gray" }],
-      },
-      {
-        scenario: "Banque détecte le paiement le matin — la relance du jour est annulée",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Relance auto ✓", type: "on" }],
-        results: [{ label: "Paiement coché automatiquement ✓", type: "green" }, { label: "Relance annulée (déjà payé)", type: "gray" }],
-      },
-      {
-        scenario: "Flow idéal — tout activé, zéro action requise au quotidien",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Appel loyer ✓", type: "on" }, { label: "Relance auto ✓", type: "on" }, { label: "Quittance auto ✓", type: "on" }],
-        results: [{ label: "Appel de loyer envoyé automatiquement ✓", type: "green" }, { label: "Paiement coché automatiquement ✓", type: "green" }, { label: "Quittance envoyée automatiquement ✓", type: "green" }],
-        highlight: true,
-      },
-      {
-        scenario: "Virement n'ayant manifestement rien à voir avec un loyer (achat, remboursement, salaire...)",
-        tags: [{ label: "Banque connectée ✓", type: "bank" }, { label: "Écarté par l'IA ❌", type: "off" }],
-        results: [{ label: "Ignoré (sans rapport avec un loyer)", type: "gray" }],
-      },
+    id: "semi",
+    emoji: "⚖️",
+    title: "Semi-automatique",
+    subtitle: "Les emails partent seuls, vous cochez les paiements",
+    toggles: [
+      { label: "Banque ❌", type: "off" },
+      { label: "Relance auto ✓", type: "on" },
+      { label: "Quittance auto ✓", type: "on" },
+      { label: "Appel loyer auto ✓", type: "on" },
     ],
+    daily: [
+      "L'appel de loyer et les relances partent automatiquement, sans que vous y pensiez",
+      "Vous marquez chaque loyer comme payé quand vous le recevez",
+      "La quittance part automatiquement dès que vous cochez le paiement",
+    ],
+    goodFor: "Idéal si vous ne voulez pas connecter votre banque mais voulez automatiser les emails",
   },
+  {
+    id: "auto",
+    emoji: "🚀",
+    title: "Tout automatique",
+    subtitle: "Banque connectée, zéro action au quotidien",
+    toggles: [
+      { label: "Banque ✓", type: "on" },
+      { label: "Relance auto ✓", type: "on" },
+      { label: "Quittance auto ✓", type: "on" },
+      { label: "Appel loyer auto ✓", type: "on" },
+    ],
+    daily: [
+  "Vos loyers sont détectés et cochés tout seuls, dès qu'ils arrivent sur votre compte",
+  "Quittance générée et envoyée automatiquement — vos locataires la reçoivent sans que vous leviez le petit doigt",
+  "Un locataire en retard ? La relance part sans vous, et s'annule automatiquement dès qu'il paie",
+  "Seule exception : le premier mois, ou à l'arrivée d'un nouveau locataire, si un virement est considéré comme ambigu, il apparaît dans l'onglet 🔍 À valider dans Vue globale pour une confirmation manuelle",
+],
+    goodFor: "Idéal si vous voulez le moins d'actions possible au quotidien",
+    highlight: true,
+  },
+];
+
+const faqItems = [
+  {
+    q: "Un virement bancaire est ambigu (le nom ne correspond pas par exemple), que se passe-t-il ?",
+    a: "Loya fait analyser le virement par une IA qui écarte ce qui n'a manifestement rien à voir avec un loyer. Si un doute raisonnable subsiste, il apparaît dans l'onglet 🔍 À valider — c'est vous qui tranchez en un clic, l'IA ne décide jamais seule.",
+  },
+  {
+    q: "J'ai déjà confirmé ce type de virement le mois dernier, dois-je le refaire ?",
+    a: "Non — une fois confirmé une première fois, Loya retient la structure du virement pour ce locataire et le reconnaît automatiquement les mois suivants.",
+  },
+  {
+    q: "Un virement est détecté alors que j'avais déjà coché le loyer manuellement, est-ce que ça crée un doublon ?",
+    a: "Aucun risque : si le loyer est déjà marqué payé, la détection bancaire ne fait rien de plus.",
+  },
+  {
+    q: "La relance automatique était programmée le matin, mais le locataire paie entre-temps — la relance part quand même ?",
+    a: "Non, si la banque détecte le paiement avant l'heure d'envoi de la relance, celle-ci est automatiquement annulée.",
+  },
+  
 ];
 
 function tagStyle(type: string): React.CSSProperties {
   const base: React.CSSProperties = { fontSize: 11, padding: "2px 8px", borderRadius: 999, fontWeight: 600, display: "inline-block" };
   if (type === "on") return { ...base, background: GREEN_BG, color: GREEN };
   if (type === "bank") return { ...base, background: BLUE_BG, color: BLUE };
-  return { ...base, background: "#f5f0e8", color: MUTE, border: `1px solid ${FIELD_BORDER}` };
-}
-
-function pillStyle(type: string): React.CSSProperties {
-  const base: React.CSSProperties = { fontSize: 12, padding: "3px 10px", borderRadius: 999, fontWeight: 600, whiteSpace: "nowrap" as const };
-  if (type === "green") return { ...base, background: GREEN_BG, color: GREEN };
-  if (type === "orange") return { ...base, background: AMBER_BG, color: BROWN };
-  if (type === "blue") return { ...base, background: BLUE_BG, color: BLUE };
   return { ...base, background: "#f5f0e8", color: MUTE, border: `1px solid ${FIELD_BORDER}` };
 }
 
@@ -286,15 +290,16 @@ export default function TutorialPage() {
           <div>
             {/* RÉSUMÉ RAPIDE */}
             <div style={{ background: "linear-gradient(160deg, #ffeccb, #ffdca8)", border: "1px solid #f3cd9a", borderRadius: 20, padding: 24, marginBottom: 24 }}>
-              <h2 style={{ fontFamily: display, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 2 }}>⚡ En bref — Les 5 étapes essentielles pour démarrer</h2>
+              <h2 style={{ fontFamily: display, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 2 }}>⚡ En bref — Les 6 étapes essentielles à savoir pour démarrer</h2>
               <p style={{ fontSize: 12.5, color: BROWN, marginBottom: 16 }}>Pour ceux qui ne veulent pas se prendre la tête </p>
               <ol style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
                 {[
-                  <>Remplissez votre <strong style={{ color: INK }}>profil</strong> — nom, adresse, IBAN et signature pour vos quittances</>,
+                  <>Remplissez votre <strong style={{ color: INK }}>profil</strong> — nom, adresse et signature pour vos quittances. L'IBAN est facultatif, à ajouter seulement si vous voulez l'inclure dans vos appels de loyer</>,
                   <>Ajoutez vos <strong style={{ color: INK }}>locataires</strong> — email, loyer et jour d'échéance</>,
                   <>Cliquez sur la carte d'un locataire → onglet <strong style={{ color: INK }}>Automatisation</strong> → activez ce que vous voulez</>,
-                  <>Marquez les loyers comme <strong style={{ color: INK }}>payés</strong> — la quittance part automatiquement</>,
-                  <>Connectez votre <strong style={{ color: INK }}>banque</strong> depuis l'accueil pour ne plus rien faire du tout</>,
+                  <>Connectez votre <strong style={{ color: INK }}>banque</strong> depuis l'accueil pour détecter vos loyers reçus automatiquement — ou marquez-les comme <strong style={{ color: INK }}>payés</strong> vous-même chaque mois. Dans les deux cas, les automatisations activées à l'étape précédente (quittance, relances...) se déclenchent toutes seules</>,
+                  <>⚠️Le premier mois, jetez un œil à l'onglet <strong style={{ color: INK }}>"À valider"</strong> — les cas évidents sont validés automatiquement, mais certains virements ambigus vous seront proposés pour confirmation. Une fois confirmés, ils sont reconnus tout seuls les mois suivants</>,
+                  <>Sur l'accueil, deux bandeaux vous préviennent automatiquement quand une action est nécessaire : un si des <strong style={{ color: INK }}>locataires sont en retard</strong>, un autre si des <strong style={{ color: INK }}>virements bancaires attendent votre validation</strong> — pas besoin d'aller chercher, Loya vous le signale</>,
                 ].map((txt, i) => (
                   <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#5c4a2e", lineHeight: 1.5 }}>
                     <span style={{ fontFamily: display, fontWeight: 800, color: BROWN, flexShrink: 0 }}>{i + 1}.</span>
@@ -360,54 +365,62 @@ export default function TutorialPage() {
             <div style={{ background: "linear-gradient(160deg, #ffeccb, #ffdca8)", border: "1px solid #f3cd9a", borderRadius: 20, padding: 24, marginBottom: 24 }}>
               <h2 style={{ fontFamily: display, fontSize: 17, fontWeight: 700, color: INK, marginBottom: 8 }}>⚡ Comment fonctionne l'automatisation ?</h2>
               <p style={{ fontSize: 14, color: "#5c4a2e", lineHeight: 1.6, margin: 0 }}>
-                Chaque locataire a ses propres réglages dans l'onglet <strong style={{ color: INK }}>Automatisation</strong> de sa fiche. Selon ce que vous activez, Loya agit automatiquement. Voici toutes les combinaisons possibles.
+                Chaque locataire a ses propres réglages dans l'onglet <strong style={{ color: INK }}>Automatisation</strong> de sa fiche. Voici 3 configurations types pour vous aider à choisir celle qui vous correspond.
               </p>
             </div>
 
-            {/* LÉGENDE */}
-            <div style={{ ...card, marginBottom: 24, padding: "16px 20px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: MUTE, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Conditions (ce que vous avez activé)</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                <span style={tagStyle("on")}>Activé ✓</span>
-                <span style={tagStyle("off")}>Désactivé ❌</span>
-                <span style={tagStyle("bank")}>Banque connectée / cas bancaire</span>
-              </div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: MUTE, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Résultats (ce qui se passe)</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={pillStyle("green")}>Fait automatiquement, rien à faire</span>
-                <span style={pillStyle("blue")}>Suggestion créée, en attente de votre validation</span>
-                <span style={pillStyle("orange")}>Une action de votre part est nécessaire</span>
-                <span style={pillStyle("gray")}>Rien ne se passe</span>
+            {/* CONFIGURATIONS */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 28 }}>
+              {configProfiles.map((profile) => (
+                <div key={profile.id} style={{ background: "#fff", borderRadius: 20, border: `2px solid ${profile.highlight ? ORANGE : BORDER}`, padding: 22, position: "relative" }}>
+                  {profile.highlight && (
+                    <span style={{ position: "absolute", top: -12, left: 20, background: ORANGE, color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>
+                      Recommandé
+                    </span>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                    <div style={{ width: 44, height: 44, background: CREAM, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{profile.emoji}</div>
+                    <div>
+                      <h3 style={{ fontFamily: display, fontSize: 18, fontWeight: 700, color: INK, margin: 0 }}>{profile.title}</h3>
+                      <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>{profile.subtitle}</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                    {profile.toggles.map((t, i) => <span key={i} style={tagStyle(t.type)}>{t.label}</span>)}
+                  </div>
+
+                  <p style={{ fontSize: 12, fontWeight: 700, color: MUTE, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Au quotidien</p>
+                  <ul style={{ display: "flex", flexDirection: "column", gap: 6, listStyle: "none", padding: 0, margin: "0 0 14px" }}>
+                    {profile.daily.map((d, i) => (
+                      <li key={i} style={{ display: "flex", gap: 8, fontSize: 14, color: "#5c4a2e", lineHeight: 1.45 }}>
+                        <span style={{ flexShrink: 0 }}>•</span>
+                        <span>{d}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p style={{ fontSize: 13, fontWeight: 600, color: BROWN, margin: 0 }}>💡 {profile.goodFor}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* FAQ — cas particuliers */}
+            <div style={card}>
+              <h2 style={{ fontFamily: display, fontSize: 16, fontWeight: 700, color: INK, marginBottom: 4 }}>❓ Cas particuliers</h2>
+              <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16 }}>Des questions plus précises sur des situations rares</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {faqItems.map((item, i) => (
+                  <details key={i} style={{ background: FIELD_BG, borderRadius: 12, border: `1px solid ${FIELD_BORDER}`, padding: "12px 16px" }}>
+                    <summary style={{ fontSize: 14, fontWeight: 700, color: INK, cursor: "pointer" }}>{item.q}</summary>
+                    <p style={{ fontSize: 13.5, color: "#5c4a2e", marginTop: 8, marginBottom: 0, lineHeight: 1.5 }}>{item.a}</p>
+                  </details>
+                ))}
               </div>
             </div>
 
-            {/* SCÉNARIOS */}
-            {autoScenarios.map((group) => (
-              <div key={group.group} style={{ marginBottom: 28 }}>
-                <p style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: BROWN, marginBottom: 12 }}>{group.group}</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {group.items.map((item, i) => (
-                    <div key={i} style={{ background: "#fff", borderRadius: 16, border: `1px solid ${(item as any).highlight ? ORANGE : BORDER}`, padding: "14px 18px", display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: INK }}>
-                          {(item as any).highlight && <span style={{ background: ORANGE, color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, marginRight: 8 }}>Recommandé</span>}
-                          {item.scenario}
-                        </span>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {item.tags.map((tag, j) => <span key={j} style={tagStyle(tag.type)}>{tag.label}</span>)}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-                        {item.results.map((r, j) => <span key={j} style={pillStyle(r.type)}>{r.label}</span>)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-
             {/* FOOTER */}
-            <div style={{ marginTop: 8, background: INK, borderRadius: 20, padding: 28, textAlign: "center" }}>
+            <div style={{ marginTop: 24, background: INK, borderRadius: 20, padding: 28, textAlign: "center" }}>
               <p style={{ fontFamily: display, color: CREAM, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>Prêt à tout automatiser ? 🚀</p>
               <p style={{ color: "rgba(251,241,227,0.75)", fontSize: 14, marginBottom: 20 }}>Connectez votre banque et activez toutes les options pour un flow 100% autonome.</p>
               <Link href="/tenants" style={{ display: "inline-block", background: CREAM, color: INK, padding: "13px 26px", borderRadius: 999, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>

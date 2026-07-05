@@ -140,7 +140,18 @@ export default function TenantsPage() {
     if (!error) setProperties(data || []);
   }
 
+  function resetForm() {
+    setName(""); setEmail(""); setRent(""); setRentDueDay("");
+    setPropertyAddress(""); setPhone("");
+    setEditingId(null); setShowForm(false); setPropertyId("");
+    setFirstName("");
+  }
+
   async function addTenant() {
+    if (!name.trim() || !firstName.trim() || !email.trim() || !propertyAddress.trim() || rent === "" || !rentDueDay || Number(rentDueDay) < 1) {
+      toast.error("Merci de remplir tous les champs obligatoires (nom, prénom, email, adresse, loyer, jour d'échéance).");
+      return;
+    }
     const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase.from("tenants").insert([{
       name: `${firstName} ${name}`.trim(), email,
@@ -160,6 +171,10 @@ export default function TenantsPage() {
 
   async function updateTenant() {
     if (!editingId) return;
+    if (!name.trim() || !firstName.trim() || !email.trim() || !propertyAddress.trim() || rent === "" || !rentDueDay || Number(rentDueDay) < 1) {
+      toast.error("Merci de remplir tous les champs obligatoires (nom, prénom, email, adresse, loyer, jour d'échéance).");
+      return;
+    }
     const { error } = await supabase.from("tenants").update({
       name: `${firstName} ${name}`.trim(), email,
       rent: rent ? Number(rent) : null,
@@ -173,12 +188,12 @@ export default function TenantsPage() {
   }
 
   async function archiveTenant(id: string, e: React.MouseEvent) {
-  e.preventDefault()
-  e.stopPropagation()
-  const { error } = await supabase.from("tenants").update({ is_archived: true }).eq("id", id)
-  if (!error) { await fetchTenants(); toast.success("Locataire archivé."); }
-  else toast.error("Erreur lors de l'archivage.")
-}
+    e.preventDefault();
+    e.stopPropagation();
+    const { error } = await supabase.from("tenants").update({ is_archived: true }).eq("id", id);
+    if (!error) { await fetchTenants(); toast.success("Locataire archivé."); }
+    else toast.error("Erreur lors de l'archivage.");
+  }
 
   async function confirmDelete() {
     if (!deleteModal) return;
@@ -203,13 +218,6 @@ export default function TenantsPage() {
     setShowForm(true);
     setPropertyId(t.property_id ?? "");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function resetForm() {
-    setName(""); setEmail(""); setRent(""); setRentDueDay("");
-    setPropertyAddress(""); setPhone("");
-    setEditingId(null); setShowForm(false); setPropertyId("");
-    setFirstName("");
   }
 
   function getDueStatus(tenant: any, isPaid: boolean) {
@@ -300,14 +308,17 @@ export default function TenantsPage() {
             <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16 }}>
               Les options d'automatisation se configurent dans la fiche du locataire.
             </p>
+            <p style={{ fontSize: 12.5, fontWeight: 500, color: MUTE, marginBottom: 16 }}>
+              * Champs obligatoires
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { placeholder: "Nom", value: name, onChange: setName },
-                { placeholder: "Prénom", value: firstName, onChange: setFirstName },
-                { placeholder: "Email", value: email, onChange: setEmail },
+                { placeholder: "Nom *", value: name, onChange: setName },
+                { placeholder: "Prénom *", value: firstName, onChange: setFirstName },
+                { placeholder: "Email *", value: email, onChange: setEmail },
                 { placeholder: "Téléphone", value: phone, onChange: setPhone },
-                { placeholder: "Adresse du bien (ex: 12 rue des Lilas, Paris)", value: propertyAddress, onChange: setPropertyAddress },
-                { placeholder: "Loyer (€)", value: rent, onChange: setRent },
+                { placeholder: "Adresse du bien (ex: 12 rue des Lilas, Paris) *", value: propertyAddress, onChange: setPropertyAddress },
+                { placeholder: "Loyer (€) *", value: rent, onChange: setRent },
               ].map(({ placeholder, value, onChange }) => (
                 <input key={placeholder} style={fieldStyle} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
               ))}
@@ -317,7 +328,7 @@ export default function TenantsPage() {
                   <option key={p.id} value={p.id}>{p.address} — {p.city}</option>
                 ))}
               </select>
-              <input type="number" min="1" max="31" style={fieldStyle} placeholder="Jour du mois pour l'échéance (ex: 5)" value={rentDueDay} onChange={(e) => setRentDueDay(e.target.value)} />
+              <input type="number" min="1" max="31" style={fieldStyle} placeholder="Jour du mois pour l'échéance (ex: 5) *" value={rentDueDay} onChange={(e) => setRentDueDay(e.target.value)} />
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button onClick={editingId ? updateTenant : addTenant} style={{ background: INK, color: CREAM, padding: "12px 20px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: body, flex: 1 }}>
@@ -373,17 +384,17 @@ export default function TenantsPage() {
                     ✏️ Modifier
                   </button>
                   <button
-                  onClick={(e) => archiveTenant(t.id, e)}
-                  style={{ background: "#fbeccf", color: BROWN, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
-                >
-                  📦 Archiver
-                </button>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteModal({ id: t.id, name: t.name }); }}
-                  style={{ background: RED_BG, color: RED, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
-                >
-                  🗑 Supprimer
-                </button>
+                    onClick={(e) => archiveTenant(t.id, e)}
+                    style={{ background: "#fbeccf", color: BROWN, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
+                  >
+                    📦 Archiver
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteModal({ id: t.id, name: t.name }); }}
+                    style={{ background: RED_BG, color: RED, padding: "7px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: body }}
+                  >
+                    🗑 Supprimer
+                  </button>
                 </div>
               </div>
             );
@@ -394,5 +405,3 @@ export default function TenantsPage() {
     </main>
   );
 }
-
-
