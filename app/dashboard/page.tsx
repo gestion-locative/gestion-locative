@@ -321,6 +321,15 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 }
 
+async function copyContactEmail() {
+  try {
+    await navigator.clipboard.writeText("contact@loyafr.com")
+    toast.success("Adresse copiée : contact@loyafr.com — collez-la dans votre appli mail")
+  } catch {
+    toast.error("Impossible de copier automatiquement. Notez : contact@loyafr.com")
+  }
+}
+
 async function disconnectBank() {
   if (!user) return
   await fetch('/api/bank/disconnect', {
@@ -346,13 +355,13 @@ async function disconnectBank() {
   const tiles = [
     { href: "/profile", icon: "👤", title: "Mon profil", sub: "Infos · Signature · Emails" },
     { href: "/tenants", icon: "👥", title: "Mes locataires", sub: `${stats.totalTenants} locataire${stats.totalTenants > 1 ? "s" : ""}`, tenants: true },
-    { href: "/documents", icon: "📋", title: "Vue globale", sub: "Relances · Quittances · Appels" },
+    { href: "/documents", icon: "📋", title: "Vue globale", sub: "Relances · Quittances · Appels· Synchro" },
     {href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
     { href: "/properties", icon: "🏠", title: "Mes biens", sub: `${stats.totalProperties} bien${stats.totalProperties > 1 ? "s" : ""}`, vacant: true },
     { href: "/export", icon: "📊", title: "Export & Fiscalité", sub: "Télécharger vos données" },
     { href: "/tutorial", icon: "📖", title: "Guide d'utilisation", sub: "Découvrir toutes les fonctionnalités" },
     { href: "/install", icon: "📱", title: "Installer Loya", sub: "Ajouter sur votre écran d'accueil" },
-    
+    { href: "#", icon: "💬", title: "Besoin d'aide ?", sub: "contact@loyafr.com", contact: true },
   ];
   return (
     <main style={{ minHeight: "100vh", background: CREAM, padding: "20px 16px", fontFamily: body }}>
@@ -456,6 +465,20 @@ async function disconnectBank() {
         }}>
 
         {tiles.map((t) => (
+        (t as any).contact ? (
+          <button
+            key="contact"
+            onClick={copyContactEmail}
+            style={{ ...cardStyle, cursor: "pointer", textAlign: "left", fontFamily: body }}
+          >
+            <div style={chipStyle}>{t.icon}</div>
+            <p style={tileTitle}>{t.title}</p>
+            <p style={{ ...tileSub, wordBreak: "break-all" }}>{t.sub}</p>
+            <span style={{ fontSize: 11, color: BROWN, marginTop: 8, display: "inline-block", fontWeight: 600 }}>
+              📋 Cliquer pour copier
+            </span>
+          </button>
+        ) :
         t.bank ? (
         <div key="bank" style={{ ...cardStyle }}>
           <div style={chipStyle}>🏦</div>
@@ -513,7 +536,12 @@ async function disconnectBank() {
         )}
         </div>
       ) : (
-          <Link key={t.href} href={t.href} style={cardStyle}>
+          <Link
+            key={t.href}
+            href={t.href}
+            style={cardStyle}
+            {...(t.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          >
             <div style={chipStyle}>{t.icon}</div>
             <p style={tileTitle}>{t.title}</p>
             <p style={tileSub}>{t.sub}</p>
