@@ -8,10 +8,16 @@ const PRIVATE_KEY_ENV = process.env.ENABLEBANKING_PRIVATE_KEY // pour Vercel (co
 function getPrivateKey(): string {
   if (PRIVATE_KEY_ENV) {
     // Sur Vercel, les retours à la ligne des env vars sont souvent échappés en \n littéral
-    return PRIVATE_KEY_ENV.replace(/\\n/g, '\n')
+    const key = PRIVATE_KEY_ENV.replace(/\\n/g, '\n')
+    console.log('Longueur de la clé (env):', key.length)
+    console.log('Commence par:', key.substring(0, 30))
+    console.log('Finit par:', key.substring(key.length - 30))
+    return key
   }
   if (PRIVATE_KEY_PATH) {
-    return fs.readFileSync(PRIVATE_KEY_PATH, 'utf8')
+    const key = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8')
+    console.log('Longueur de la clé (fichier):', key.length)
+    return key
   }
   throw new Error('Clé privée Enable Banking manquante (ENABLEBANKING_PRIVATE_KEY ou _PATH)')
 }
