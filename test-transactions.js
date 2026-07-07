@@ -26,7 +26,7 @@ async function main() {
   console.log('--- SESSION ---')
   console.log(JSON.stringify(sessionData, null, 2))
 
-  const accountId = sessionData.accounts?.[0]?.uid
+  const accountId = sessionData.accounts?.[0]
   if (!accountId) {
     console.log('Aucun compte trouvé dans la session')
     return
