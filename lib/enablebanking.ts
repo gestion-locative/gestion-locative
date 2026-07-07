@@ -53,3 +53,43 @@ export function enableBankingHeaders() {
     Authorization: `Bearer ${generateEnableBankingJWT()}`,
   }
 }
+
+export async function getSessionAccounts(sessionId: string): Promise<string[]> {
+  const res = await fetch(`${ENABLEBANKING_BASE_URL}/sessions/${sessionId}`, {
+    headers: enableBankingHeaders(),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(`Erreur session Enable Banking: ${JSON.stringify(data)}`)
+  return data.accounts || []
+}
+
+export async function getAccountTransactions(accountId: string): Promise<any[]> {
+  const res = await fetch(`${ENABLEBANKING_BASE_URL}/accounts/${accountId}/transactions`, {
+    headers: enableBankingHeaders(),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(`Erreur transactions Enable Banking: ${JSON.stringify(data)}`)
+  return data.transactions || []
+}
+
+// Convertit une transaction Enable Banking dans le même format que celui
+// attendu par matchTransaction() et cleanSignature(), pour réutiliser
+// la logique de matching existante sans la réécrire.
+export function normalizeEnableBankingTransaction(tx: any) {
+  const amount = parseFloat(tx.transaction_amount?.amount || '0')
+  const isCredit = tx.credit_debit_indicator === 'CRDT'
+  const debtorName = tx.debtor?.name || ''
+  const remittance = (tx.remittance_information || []).join(' ')
+  // On combine le nom du débiteur (structuré) et le libellé libre dans une
+  // seule chaîne, pour rester compatible avec la logique existante qui
+  // cherche le nom du locataire dans une description textuelle.
+  const description = `${debtorName} ${remittance}`.trim()
+  const date = tx.booking_date || tx.value_date || tx.transaction_date
+
+  return {
+    id: tx.entry_reference || tx.transaction_id || `${date}-${amount}-${debtorName}`,
+    amount: isCredit ? amount : -amount, // les débits deviennent négatifs, comme le filtre `amount <= 0` l'attend déjà
+    clean_description: description,
+    date,
+  }
+}
