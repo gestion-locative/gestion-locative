@@ -142,9 +142,21 @@ const sections = [
     ],
   },
   {
+  id: "export",
+  emoji: "📊",
+  title: "10. Export & Fiscalité",
+  steps: [
+    "Depuis l'accueil, cliquez sur la tuile **Export & Fiscalité**",
+    "Choisissez l'**année fiscale** — seules les années où vous avez des paiements enregistrés apparaissent dans la liste",
+    "Cliquez sur **Télécharger l'export (.xlsx)** pour obtenir un fichier Excel contenant, pour chaque paiement : nom du locataire, adresse du bien, montant du loyer, mois concerné, statut (payé/non payé), date de paiement et date d'envoi de la quittance. Chaque colonne est **filtrable** — pratique si vous gérez plusieurs biens et voulez isoler un bien en particulier, ou si vous voulez ne garder que les loyers effectivement encaissés avant de transmettre le fichier à votre comptable ou de faire votre déclaration de revenus fonciers vous-même",
+    "**Locataires archivés** : dans l'onglet dédié, retrouvez vos anciens locataires avec le total encaissé sur toute leur période chez vous — leur historique reste inclus dans l'export Excel même après archivage",
+    "Vous pouvez **désarchiver** un locataire à tout moment depuis cet onglet s'il revient",
+  ],
+},
+  {
     id: "biens",
     emoji: "🏠",
-    title: "10. Gérer vos biens (optionnel)",
+    title: "11. Gérer vos biens (optionnel)",
     steps: [
       "La gestion des biens est **optionnelle** — utile si vous possédez plusieurs logements pour savoir quels appartements sont vacants ou occupés",
       "Allez sur **Mes biens** depuis l'accueil, cliquez sur **+ Ajouter un bien** et renseignez l'adresse, la ville, le type et la surface",
