@@ -8,12 +8,9 @@ const PRIVATE_KEY_ENV = process.env.ENABLEBANKING_PRIVATE_KEY // pour Vercel (co
 function getPrivateKey(): string {
   if (PRIVATE_KEY_ENV) {
     let key = PRIVATE_KEY_ENV.replace(/\\n/g, '\n').trim()
-
-    // Si les balises PEM sont manquantes, on les ajoute
     if (!key.includes('-----BEGIN')) {
       key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`
     }
-
     return key
   }
   if (PRIVATE_KEY_PATH) {

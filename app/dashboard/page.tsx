@@ -87,6 +87,9 @@ export default function Home() {
   const [bankExpiringSoon, setBankExpiringSoon] = useState(false)
   const [bankExpired, setBankExpired] = useState(false)
   const [bankSyncBroken, setBankSyncBroken] = useState(false)
+  const [bankModalVisible, setBankModalVisible] = useState(false)
+  const [banksList, setBanksList] = useState<any[]>([])
+  const [loadingBanks, setLoadingBanks] = useState(false)
   const [stats, setStats] = useState({
     totalTenants: 0,
     paidCount: 0,
@@ -330,7 +333,35 @@ async function createDefaultProfileIfNeeded(userId: string) {
     window.location.href = data.connect_url
   }
 }
+async function openBankSelection() {
+  setBankModalVisible(true)
+  setLoadingBanks(true)
+  try {
+    const res = await fetch('/api/enablebanking/banks')
+    const data = await res.json()
+    setBanksList(data.banks || [])
+  } catch {
+    toast.error("Impossible de récupérer la liste des banques.")
+  } finally {
+    setLoadingBanks(false)
+  }
+}
 
+async function selectBank(bankName: string) {
+  if (!user) return
+  setBankModalVisible(false)
+  const response = await fetch('/api/enablebanking/connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user.id, aspspName: bankName, aspspCountry: 'FR' })
+  })
+  const data = await response.json()
+  if (data.connect_url) {
+    window.location.href = data.connect_url
+  } else {
+    toast.error("Impossible de se connecter à cette banque.")
+  }
+}
 async function copyContactEmail() {
   try {
     await navigator.clipboard.writeText("contact@loyafr.com")
@@ -375,6 +406,14 @@ async function disconnectBank() {
   ];
   return (
     <main style={{ minHeight: "100vh", background: CREAM, padding: "20px 16px", fontFamily: body }}>
+      {bankModalVisible && (
+      <BankSelectModal
+        banks={banksList}
+        loading={loadingBanks}
+        onSelect={selectBank}
+        onCancel={() => setBankModalVisible(false)}
+      />
+    )}
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
 
         {/* HEADER */}
@@ -426,7 +465,7 @@ async function disconnectBank() {
                 Loya ne peut plus synchroniser vos virements de loyer ni générer vos quittances automatiquement tant que ce n'est pas fait.
               </p>
               <button
-                onClick={connectBank}
+                onClick={openBankSelection}
                 style={{
                   background: INK,
                   color: CREAM,
@@ -537,7 +576,7 @@ async function disconnectBank() {
                   {bankBroken ? "⚠️ Connexion à renouveler" : "⚠️ Expire bientôt"}
                 </span>
                 <button
-                  onClick={connectBank}
+                  onClick={openBankSelection}
                   style={{
                     background: ORANGE,
                     color: '#fff',
@@ -563,7 +602,7 @@ async function disconnectBank() {
           </div>
         ) : (
           <button
-            onClick={connectBank}
+            onClick={openBankSelection}
             style={{
               marginTop: 10,
               background: ORANGE,
@@ -640,4 +679,35 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p style={{ fontFamily: display, fontWeight: 700, fontSize: 17, color: "#5c4a2e" }}>{value}</p>
     </div>
   );
+}
+
+function BankSelectModal({ banks, loading, onSelect, onCancel }: { banks: any[]; loading: boolean; onSelect: (bankName: string) => void; onCancel: () => void }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,18,8,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#fff", borderRadius: 24, padding: "28px 24px", maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 32px 80px -20px rgba(26,18,8,0.5)", border: "1px solid #efe3cd" }}>
+        <h2 style={{ fontFamily: "var(--font-bricolage), sans-serif", fontSize: 20, fontWeight: 800, color: "#1a1208", marginBottom: 16 }}>
+          Choisissez votre banque
+        </h2>
+        {loading ? (
+          <p style={{ fontSize: 14, color: "#a89372" }}>Chargement des banques...</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {banks.map((bank) => (
+              <button
+                key={bank.name}
+                onClick={() => onSelect(bank.name)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, border: "2px solid #e6d6bb", background: "#fdf8ef", cursor: "pointer", textAlign: "left", fontFamily: "var(--font-manrope), sans-serif", fontSize: 14, fontWeight: 700, color: "#1a1208" }}
+              >
+                {bank.logo && <img src={bank.logo} alt="" style={{ width: 28, height: 28, objectFit: "contain" }} />}
+                {bank.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <button onClick={onCancel} style={{ marginTop: 16, padding: "12px 20px", borderRadius: 999, background: "transparent", color: "#7a684f", fontFamily: "var(--font-manrope), sans-serif", fontWeight: 700, fontSize: 15, border: "2px solid #e6d6bb", cursor: "pointer", width: "100%" }}>
+          Annuler
+        </button>
+      </div>
+    </div>
+  )
 }
