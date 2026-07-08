@@ -373,11 +373,18 @@ async function copyContactEmail() {
 
 async function disconnectBank() {
   if (!user) return
-  await fetch('/api/bank/disconnect', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: user.id })
-  })
+  await Promise.all([
+    fetch('/api/bank/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id })
+    }),
+    fetch('/api/enablebanking/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id })
+    })
+  ])
   setBankConnected(false)
   setBankExpired(false)
   setBankExpiringSoon(false)
