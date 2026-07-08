@@ -178,14 +178,14 @@ async function createDefaultProfileIfNeeded(userId: string) {
   async function fetchOwnerName(userId: string) {
   const { data } = await supabase
     .from("owner_profiles")
-    .select("first_name, bridge_user_uuid, last_bank_sync_at, bridge_connected_at, bank_sync_error_count")
+    .select("first_name, bridge_user_uuid, last_bank_sync_at, bridge_connected_at, bank_sync_error_count, enablebanking_session_id, enablebanking_connected_at")
     .eq("user_id", userId)
     .maybeSingle()
 
   if (data?.first_name && data.first_name.trim() !== "") {
     setOwnerName(data.first_name)
   }
-  if (data?.bridge_user_uuid) {
+  if (data?.bridge_user_uuid || data?.enablebanking_session_id) {
     setBankConnected(true)
   }
 
