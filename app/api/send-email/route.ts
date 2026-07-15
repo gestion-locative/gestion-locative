@@ -30,10 +30,21 @@ export async function POST(req: Request) {
       .eq("user_id", ownerId)
       .maybeSingle();
 
-    const subjectTemplate = owner?.reminder_subject || "Rappel de paiement de loyer";
-    const bodyTemplate = owner?.reminder_body || `Bonjour {nom_locataire},\n\nNous vous informons que le paiement de votre loyer de {loyer}€ est actuellement en attente. Nous vous remercions de bien vouloir procéder au règlement dans les meilleurs délais.\n\nPour toute question, n'hésitez pas à nous contacter.\n\nCordialement,\n{nom_proprietaire}`;
+    // L'email du propriétaire n'est pas stocké dans owner_profiles — on va le
+    // chercher directement dans Supabase Auth à partir de son ownerId.
+    const { data: ownerAuth } = await supabaseAdmin.auth.admin.getUserById(ownerId);
+    const ownerEmail = ownerAuth?.user?.email || "";
 
-    const vars = { nom_locataire: name, loyer: String(rent), mois: "", nom_proprietaire: owner?.full_name || "" };
+    const subjectTemplate = owner?.reminder_subject || "Rappel de paiement de loyer";
+    const bodyTemplate = owner?.reminder_body || `Bonjour {nom_locataire},\n\nNous vous informons que le paiement de votre loyer de {loyer}€ est actuellement en attente. Nous vous remercions de bien vouloir procéder au règlement dans les meilleurs délais.\n\nSi vous avez déjà réglé ce loyer, merci de ne pas tenir compte de ce message.\n\nPour toute question, vous pouvez nous contacter à {email_proprietaire}.\n\nCordialement,\n{nom_proprietaire}`;
+
+    const vars = {
+      nom_locataire: name,
+      loyer: String(rent),
+      mois: "",
+      nom_proprietaire: owner?.full_name || "",
+      email_proprietaire: ownerEmail,
+    };
     const subject = applyTemplate(subjectTemplate, vars);
     const message = applyTemplate(bodyTemplate, vars);
 
