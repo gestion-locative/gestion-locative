@@ -7,19 +7,10 @@ const PRIVATE_KEY_PATH = 'C:/Users/fanny/gestion-locative/f8f89dbd-12c9-4737-bfc
 function generateJWT() {
   const now = Math.floor(Date.now() / 1000)
   const privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8')
-
   return jwt.sign(
-    {
-      iss: 'enablebanking.com',
-      aud: 'api.enablebanking.com',
-      iat: now,
-      exp: now + 3600,
-    },
+    { iss: 'enablebanking.com', aud: 'api.enablebanking.com', iat: now, exp: now + 3600 },
     privateKey,
-    {
-      algorithm: 'RS256',
-      header: { typ: 'JWT', alg: 'RS256', kid: APPLICATION_ID },
-    }
+    { algorithm: 'RS256', header: { typ: 'JWT', alg: 'RS256', kid: APPLICATION_ID } }
   )
 }
 
@@ -29,7 +20,10 @@ async function main() {
     headers: { Authorization: `Bearer ${token}` },
   })
   const data = await res.json()
-  console.log(JSON.stringify(data, null, 2))
+  const allNames = data.aspsps.map(b => b.name)
+  console.log('Nombre total de banques FR:', allNames.length)
+  console.log('--- Toutes les banques ---')
+  console.log(allNames.join('\n'))
 }
 
 main()

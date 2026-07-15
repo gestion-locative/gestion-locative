@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
+// 🚧 SYNCHRONISATION BANCAIRE — pas encore activée en prod.
+// Le code de fetch/validation reste actif (les tables se remplissent déjà
+// si un cron tourne), mais les onglets liés sont affichés en mode "à venir"
+// tant que ce flag est à false. Repasser à `true` au lancement.
+const SYNC_ENABLED = false;
+
 const INK = "#1a1208";
 const CREAM = "#fbf1e3";
 const ORANGE = "#e8590c";
@@ -63,6 +69,16 @@ function RemindAllModal({ tenants, onConfirm, onCancel }: { tenants: any[]; onCo
   );
 }
 
+function ComingSoonPanel({ icon, title, text }: { icon: string; title: string; text: string }) {
+  return (
+    <div style={{ background: "#f8f4ea", border: `1px dashed ${FIELD_BORDER}`, borderRadius: 16, padding: 32, textAlign: "center" }}>
+      <p style={{ fontSize: 30, marginBottom: 10 }}>{icon}</p>
+      <p style={{ fontFamily: display, fontWeight: 700, fontSize: 16, color: INK, marginBottom: 6 }}>{title}</p>
+      <p style={{ fontSize: 13, color: MUTE, lineHeight: 1.6, maxWidth: 420, margin: "0 auto" }}>{text}</p>
+    </div>
+  );
+}
+
 export default function DocumentsPage() {
   const router = useRouter();
   const [tenants, setTenants] = useState<any[]>([]);
@@ -90,8 +106,10 @@ export default function DocumentsPage() {
   async function fetchAll() { 
   await fetchTenants()
   await fetchReceipts()
-  await fetchSyncLogs()
-  await fetchPendingMatches()
+  if (SYNC_ENABLED) {
+    await fetchSyncLogs()
+    await fetchPendingMatches()
+  }
 }
 
   async function fetchTenants() {
@@ -133,7 +151,7 @@ export default function DocumentsPage() {
   if (!error) setSyncLogs(data || [])
 }
 
-  // ── NOUVEAU : suggestions de matching IA en attente de validation ──
+  // ── Suggestions de matching IA en attente de validation ──
   async function fetchPendingMatches() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) return
@@ -274,6 +292,11 @@ export default function DocumentsPage() {
     color: active ? INK : MUTE,
   });
 
+  const comingSoonBadge: React.CSSProperties = {
+    background: "#f1ece2", color: MUTE, fontSize: 10, fontWeight: 700,
+    padding: "2px 8px", borderRadius: 999, letterSpacing: "0.02em",
+  };
+
   const selectStyle: React.CSSProperties = {
     border: `2px solid ${FIELD_BORDER}`, background: FIELD_BG, padding: "9px 12px", borderRadius: 12,
     fontSize: 13, color: INK, fontFamily: body, outline: "none", cursor: "pointer",
@@ -314,13 +337,17 @@ export default function DocumentsPage() {
           <button onClick={() => setActiveTab("appels")} style={tabStyle(activeTab === "appels")}>
             📨 Appels de loyer
           </button>
-          <button onClick={() => setActiveTab("validation")} style={tabStyle(activeTab === "validation")}>
+          <button onClick={() => setActiveTab("validation")} style={{ ...tabStyle(activeTab === "validation"), opacity: SYNC_ENABLED ? 1 : 0.55 }}>
             🔍 À valider
-            {pendingMatches.length > 0 && <span style={{ background: AMBER_BG, color: AMBER, fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{pendingMatches.length}</span>}
+            {SYNC_ENABLED
+              ? pendingMatches.length > 0 && <span style={{ background: AMBER_BG, color: AMBER, fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{pendingMatches.length}</span>
+              : <span style={comingSoonBadge}>à venir</span>}
           </button>
-          <button onClick={() => setActiveTab("logs")} style={tabStyle(activeTab === "logs")}>
+          <button onClick={() => setActiveTab("logs")} style={{ ...tabStyle(activeTab === "logs"), opacity: SYNC_ENABLED ? 1 : 0.55 }}>
             🏦 Synchronisations
-            {syncLogs.length > 0 && <span style={{ background: CREAM, color: "#7a684f", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{syncLogs.length}</span>}
+            {SYNC_ENABLED
+              ? syncLogs.length > 0 && <span style={{ background: CREAM, color: "#7a684f", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{syncLogs.length}</span>
+              : <span style={comingSoonBadge}>à venir</span>}
           </button>
         </div>
 
@@ -516,7 +543,13 @@ export default function DocumentsPage() {
         {/* ───────── ONGLET À VALIDER (matching IA) ───────── */}
         {activeTab === "validation" && (
           <div>
-            {pendingMatches.length === 0 ? (
+            {!SYNC_ENABLED ? (
+              <ComingSoonPanel
+                icon="🔍"
+                title="Validation des virements — bientôt disponible"
+                text="Une fois la synchronisation bancaire activée, les virements que Loya ne reconnaît pas avec certitude apparaîtront ici pour que vous les confirmiez ou les corrigiez vous-même."
+              />
+            ) : pendingMatches.length === 0 ? (
               <div style={{ background: GREEN_BG, border: `1px solid #c3e6c8`, borderRadius: 16, padding: 24, textAlign: "center" }}>
                 <p style={{ color: GREEN, fontWeight: 700, fontFamily: display, fontSize: 16 }}>✅ Aucun virement en attente de validation</p>
                 <p style={{ fontSize: 12.5, color: "#5c8a63", marginTop: 6, lineHeight: 1.5 }}>Quand un virement reçu ne peut pas être identifié avec certitude, il apparaîtra ici pour que vous le confirmiez vous-même.</p>
@@ -588,44 +621,54 @@ export default function DocumentsPage() {
         {/* ───────── ONGLET SYNCHRONISATIONS ───────── */}
         {activeTab === "logs" && (
         <div>
-            <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16, lineHeight: 1.5 }}>
-              Historique technique de chaque analyse de vos virements bancaires — utile pour vérifier que la synchro tourne bien, indépendamment des paiements qu'elle détecte.
-            </p>
-            {syncLogs.length === 0 ? (
-            <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
-                <p style={{ color: "#7a684f", fontWeight: 600 }}>Aucune synchronisation bancaire pour le moment.</p>
-                <p style={{ fontSize: 12.5, color: MUTE, marginTop: 6 }}>Connectez votre banque depuis l'accueil pour activer la synchro automatique.</p>
-            </div>
+            {!SYNC_ENABLED ? (
+              <ComingSoonPanel
+                icon="🏦"
+                title="Synchronisation bancaire — bientôt disponible"
+                text="Loya pourra bientôt analyser automatiquement vos virements reçus pour détecter les loyers payés, générer les quittances et vous alerter en cas de retard. L'historique technique de chaque analyse apparaîtra ici."
+              />
             ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {syncLogs.map((log) => (
-                <div key={log.id} style={{ background: "#fff", borderRadius: 16, border: `1px solid ${BORDER}`, padding: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                        <p style={{ fontFamily: display, fontWeight: 700, fontSize: 15, color: INK, margin: 0 }}>
-                        {new Date(log.synced_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, background: CREAM, color: BROWN, padding: "3px 10px", borderRadius: 999 }}>
-                            {log.transactions_checked} transactions analysées
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, background: log.matches_found > 0 ? GREEN_BG : "#f1ece2", color: log.matches_found > 0 ? GREEN : MUTE, padding: "3px 10px", borderRadius: 999 }}>
-                            {log.matches_found} correspondance{log.matches_found > 1 ? "s" : ""}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, background: log.payments_confirmed > 0 ? GREEN_BG : "#f1ece2", color: log.payments_confirmed > 0 ? GREEN : MUTE, padding: "3px 10px", borderRadius: 999 }}>
-                            {log.payments_confirmed} paiement{log.payments_confirmed > 1 ? "s" : ""} confirmé{log.payments_confirmed > 1 ? "s" : ""}
-                        </span>
+              <>
+                <p style={{ fontSize: 12.5, color: MUTE, marginBottom: 16, lineHeight: 1.5 }}>
+                  Historique technique de chaque analyse de vos virements bancaires — utile pour vérifier que la synchro tourne bien, indépendamment des paiements qu'elle détecte.
+                </p>
+                {syncLogs.length === 0 ? (
+                <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
+                    <p style={{ color: "#7a684f", fontWeight: 600 }}>Aucune synchronisation bancaire pour le moment.</p>
+                    <p style={{ fontSize: 12.5, color: MUTE, marginTop: 6 }}>Connectez votre banque depuis l'accueil pour activer la synchro automatique.</p>
+                </div>
+                ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {syncLogs.map((log) => (
+                    <div key={log.id} style={{ background: "#fff", borderRadius: 16, border: `1px solid ${BORDER}`, padding: 16 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                        <div>
+                            <p style={{ fontFamily: display, fontWeight: 700, fontSize: 15, color: INK, margin: 0 }}>
+                            {new Date(log.synced_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, background: CREAM, color: BROWN, padding: "3px 10px", borderRadius: 999 }}>
+                                {log.transactions_checked} transactions analysées
+                            </span>
+                            <span style={{ fontSize: 12, fontWeight: 700, background: log.matches_found > 0 ? GREEN_BG : "#f1ece2", color: log.matches_found > 0 ? GREEN : MUTE, padding: "3px 10px", borderRadius: 999 }}>
+                                {log.matches_found} correspondance{log.matches_found > 1 ? "s" : ""}
+                            </span>
+                            <span style={{ fontSize: 12, fontWeight: 700, background: log.payments_confirmed > 0 ? GREEN_BG : "#f1ece2", color: log.payments_confirmed > 0 ? GREEN : MUTE, padding: "3px 10px", borderRadius: 999 }}>
+                                {log.payments_confirmed} paiement{log.payments_confirmed > 1 ? "s" : ""} confirmé{log.payments_confirmed > 1 ? "s" : ""}
+                            </span>
+                            </div>
+                        </div>
+                        {log.payments_confirmed > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: GREEN_BG, color: GREEN }}>
+                            ✅ Automatique
+                            </span>
+                        )}
                         </div>
                     </div>
-                    {log.payments_confirmed > 0 && (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: GREEN_BG, color: GREEN }}>
-                        ✅ Automatique
-                        </span>
-                    )}
-                    </div>
+                    ))}
                 </div>
-                ))}
-            </div>
+                )}
+              </>
             )}
         </div>
         )}

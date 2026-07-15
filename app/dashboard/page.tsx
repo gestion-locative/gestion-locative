@@ -7,6 +7,13 @@ import { supabase } from "@/lib/supabase";
 import { LoyaIcon } from "@/components/LoyaLogo";
 import toast from "react-hot-toast";
 
+// 🚧 SYNCHRONISATION BANCAIRE — pas encore activée en prod.
+// Tout le code existe et fonctionne déjà (voir plus bas), mais on n'expose
+// pas encore la connexion à l'utilisateur : la tuile s'affiche en mode
+// "à venir", grisée et non cliquable, plutôt que d'être masquée.
+// → Repasser à `true` le jour du lancement pour réactiver le flux normal.
+const SYNC_ENABLED = false;
+
 const INK = "#1a1208";
 const CREAM = "#fbf1e3";
 const ORANGE = "#e8590c";
@@ -115,7 +122,7 @@ export default function Home() {
   const bankStatus = params.get('bank')
   const bridgeUuid = params.get('bridge_uuid')
 
-  if (bankStatus === 'pending' && bridgeUuid && user) {
+  if (SYNC_ENABLED && bankStatus === 'pending' && bridgeUuid && user) {
     confirmBankConnection(bridgeUuid)
   }
 }, [user])
@@ -189,16 +196,23 @@ async function createDefaultProfileIfNeeded(userId: string) {
     setBankConnected(true)
   }
 
-  if (data?.bridge_connected_at) {
-    const connectedAt = new Date(data.bridge_connected_at)
+  // La durée de validité diffère selon le fournisseur : 90 jours pour Bridge, 180 pour Enable Banking.
+function checkExpiry(connectedAtStr: string | null, validityDays: number) {
+    if (!connectedAtStr) return
+    const connectedAt = new Date(connectedAtStr)
     const expiryDate = new Date(connectedAt)
-    expiryDate.setDate(expiryDate.getDate() + 90)
+    expiryDate.setDate(expiryDate.getDate() + validityDays)
     const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 
-    // Deux états distincts : "bientôt expirée" (proactif) et "déjà expirée" (réactif).
-    // Le second est plus urgent : la synchro a probablement déjà cessé de fonctionner.
     if (daysLeft > 0 && daysLeft <= 15) setBankExpiringSoon(true)
     if (daysLeft <= 0) setBankExpired(true)
+  }
+
+  if (data?.bridge_user_uuid) {
+    checkExpiry(data.bridge_connected_at, 90)
+  }
+  if (data?.enablebanking_session_id) {
+    checkExpiry(data.enablebanking_connected_at, 180)
   }
 
   // Signal réel de rupture : la synchro échoue depuis plusieurs tentatives.
@@ -251,7 +265,7 @@ async function createDefaultProfileIfNeeded(userId: string) {
       collectedAmount,
       pendingAmount,
       lateTenantsNames: lateTenants.map((t) => t.name),
-      pendingMatchesCount: pendingMatchesCount || 0,
+      pendingMatchesCount: SYNC_ENABLED ? (pendingMatchesCount || 0) : 0,
     });
   }
 
@@ -334,6 +348,10 @@ async function createDefaultProfileIfNeeded(userId: string) {
   }
 }
 async function openBankSelection() {
+  if (!SYNC_ENABLED) {
+    toast("La connexion bancaire arrive bientôt sur Loya 🚧")
+    return
+  }
   setBankModalVisible(true)
   setLoadingBanks(true)
   try {
@@ -403,7 +421,7 @@ async function disconnectBank() {
   const tiles = [
     { href: "/profile", icon: "👤", title: "Mon profil", sub: "Infos · Signature · Emails" },
     { href: "/tenants", icon: "👥", title: "Mes locataires", sub: `${stats.totalTenants} locataire${stats.totalTenants > 1 ? "s" : ""}`, tenants: true },
-    { href: "/documents", icon: "📋", title: "Vue globale", sub: "Relances · Quittances · Appels· Synchro" },
+    { href: "/documents", icon: "📋", title: "Vue globale", sub: `Relances · Quittances · Appels${SYNC_ENABLED ? " · Synchro" : ""}` },
     {href: "#", icon: "🏦", title: "Connexion bancaire", sub: "Synchroniser votre banque", bank: true },
     { href: "/properties", icon: "🏠", title: "Mes biens", sub: `${stats.totalProperties} bien${stats.totalProperties > 1 ? "s" : ""}`, vacant: true },
     { href: "/export", icon: "📊", title: "Export & Fiscalité", sub: "Télécharger vos données" },
@@ -457,7 +475,7 @@ async function disconnectBank() {
         </div>
 
         {/* ALERTE CONNEXION BANCAIRE CASSÉE */}
-        {bankConnected && bankBroken && (
+        {SYNC_ENABLED && bankConnected && bankBroken && (
           <div style={{
             display: "flex", alignItems: "flex-start", gap: 12,
             border: "1px solid #e53e3e", background: "#fff5f5",
@@ -511,7 +529,7 @@ async function disconnectBank() {
         )}
 
         {/* ALERTE À VALIDER — placée après l'alerte retards, avant les tuiles */}
-        {stats.pendingMatchesCount > 0 && (
+        {SYNC_ENABLED && stats.pendingMatchesCount > 0 && (
           <div style={{
             display: "flex", alignItems: "flex-start", gap: 12,
             border: "1px solid #e8590c", background: "#fdf1e7",
@@ -572,10 +590,19 @@ async function disconnectBank() {
           </button>
         ) :
         t.bank ? (
-        <div key="bank" style={{ ...cardStyle }}>
+        <div key="bank" style={{ ...cardStyle, ...(SYNC_ENABLED ? {} : { opacity: 0.6 }) }}>
           <div style={chipStyle}>🏦</div>
-          <p style={tileTitle}>Connexion bancaire</p>
-          {bankConnected ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <p style={tileTitle}>Connexion bancaire</p>
+            {!SYNC_ENABLED && (
+              <span style={{ ...badge("#f1ece2", MUTE), fontSize: 10, marginTop: 5 }}>🚧 à venir</span>
+            )}
+          </div>
+          {!SYNC_ENABLED ? (
+            <p style={{ fontSize: 8, color: MUTE, marginTop: 10, lineHeight: 1.5 }}>
+              La synchronisation automatique de vos virements arrive bientôt sur Loya.
+            </p>
+          ) : bankConnected ? (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8}}>
             {needsReconnect ? (
               <>
