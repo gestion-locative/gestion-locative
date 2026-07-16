@@ -116,6 +116,19 @@ export default function TenantPage() {
 
   useEffect(() => { fetchAll(); }, [params.id]);
 
+  // On re-fetch les quittances et l'historique des paiements à chaque
+  // ouverture de l'onglet Historique — pas seulement au premier chargement
+  // de la page. Sans ça, une suppression/modification faite ailleurs (ex:
+  // depuis l'onglet Quittances de la page Vue globale) peut rester invisible
+  // ici tant que la page n'est pas complètement rechargée, parce que l'état
+  // React est déjà en mémoire et ne se remet pas à jour tout seul.
+  useEffect(() => {
+    if (activeTab === "historique") {
+      fetchReceipts();
+      fetchHistory();
+    }
+  }, [activeTab]);
+
   // On initialise le brouillon de note une seule fois par locataire, pour ne pas
   // écraser ce que l'utilisateur est en train de taper à chaque re-fetch du tenant.
   useEffect(() => {
