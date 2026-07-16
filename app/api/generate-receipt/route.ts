@@ -155,7 +155,19 @@ export async function POST(req: Request) {
 
         const contentType = sigResponse.headers.get("content-type") || "";
         const sigBytes = await sigResponse.arrayBuffer();
-        const isPng = contentType.includes("png") || signatureUrl.toLowerCase().includes(".png");
+
+        // On ne fait plus confiance au nom de fichier ni au content-type —
+        // les deux peuvent mentir (ex: une photo JPEG uploadée puis renommée
+        // en .png). On regarde directement la signature binaire réelle du
+        // fichier : un PNG commence toujours par les octets 89 50 4E 47.
+        const bytes = new Uint8Array(sigBytes);
+        const isPng =
+          bytes.length > 4 &&
+          bytes[0] === 0x89 &&
+          bytes[1] === 0x50 &&
+          bytes[2] === 0x4e &&
+          bytes[3] === 0x47;
+
         const sigImage = isPng
           ? await pdfDoc.embedPng(sigBytes)
           : await pdfDoc.embedJpg(sigBytes);
