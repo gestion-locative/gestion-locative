@@ -14,6 +14,15 @@ function applyTemplate(template: string, vars: Record<string, string>) {
   return result;
 }
 
+// Quand une variable optionnelle (comme {iban_ligne}) est remplacée par une
+// chaîne vide, il reste souvent 2 sauts de ligne collés de chaque côté de
+// l'endroit où elle se trouvait — ça crée un gros blanc moche dans l'email.
+// On ramène toute séquence de 3+ sauts de ligne consécutifs à un simple
+// saut de paragraphe, quelle que soit la variable vide en cause.
+function collapseEmptyLines(text: string) {
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export async function POST(req: Request) {
   try {
     const { email, name, rent, rentDueDay, ownerId } = await req.json();
@@ -42,7 +51,7 @@ export async function POST(req: Request) {
     };
 
     const subject = applyTemplate(subjectTemplate, vars);
-    const message = applyTemplate(bodyTemplate, vars);
+    const message = collapseEmptyLines(applyTemplate(bodyTemplate, vars));
 
     const { data, error } = await resend.emails.send({
       from: "noreply@loyafr.com",
