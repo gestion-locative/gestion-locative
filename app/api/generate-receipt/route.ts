@@ -140,16 +140,36 @@ export async function POST(req: Request) {
 
     y -= 50;
 
+    // La signature doit toujours tenir dans cette boîte, quelle que soit la
+    // résolution de l'image uploadée par le propriétaire (une photo prise au
+    // téléphone peut être bien plus grande que l'espace restant sur la page).
+    const SIGNATURE_MAX_WIDTH = 160;
+    const SIGNATURE_MAX_HEIGHT = 60;
+
     if (signatureUrl) {
-      // Insère l'image de signature
       try {
         const sigResponse = await fetch(signatureUrl);
+        if (!sigResponse.ok) {
+          throw new Error(`Signature inaccessible (HTTP ${sigResponse.status}) — vérifier que le bucket Storage est public`);
+        }
+
+        const contentType = sigResponse.headers.get("content-type") || "";
         const sigBytes = await sigResponse.arrayBuffer();
-        const sigImage = signatureUrl.toLowerCase().includes(".png")
+        const isPng = contentType.includes("png") || signatureUrl.toLowerCase().includes(".png");
+        const sigImage = isPng
           ? await pdfDoc.embedPng(sigBytes)
           : await pdfDoc.embedJpg(sigBytes);
 
-        const sigDims = sigImage.scale(0.25);
+        // On ne prend jamais un facteur fixe : on calcule le ratio qui fait
+        // tenir l'image dans la boîte max, sans jamais l'agrandir au-delà
+        // de sa taille d'origine (Math.min(..., 1)).
+        const scale = Math.min(
+          SIGNATURE_MAX_WIDTH / sigImage.width,
+          SIGNATURE_MAX_HEIGHT / sigImage.height,
+          1
+        );
+        const sigDims = sigImage.scale(scale);
+
         page.drawImage(sigImage, {
           x: 50,
           y: y - sigDims.height,
@@ -158,7 +178,7 @@ export async function POST(req: Request) {
         });
       } catch (err) {
         console.error("Erreur insertion signature:", err);
-        // En cas d'échec, on retombe sur le texte
+        // En cas d'échec, on retombe sur le texte plutôt que de planter la génération
         page.drawText(ownerName, { x: 50, y, size: 12, font: fontBold });
       }
     } else {
